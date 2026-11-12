@@ -69,15 +69,36 @@ test('SettingsStore saves the language in the order it was asked and keeps an un
   const root = await makeTempDir();
   const logs = [];
   const store = new SettingsStore(root, { log: (message) => logs.push(message) });
-  assert.deepEqual(await store.load(), { language: null });
+  assert.deepEqual(await store.load(), { language: null, commentsWidth: null });
 
   await Promise.all([store.save({ language: 'ja' }), store.save({ language: 'en-US' }), store.save({ language: 'ja-JP' })]);
-  assert.deepEqual(await store.load(), { language: 'ja' });
+  assert.deepEqual(await store.load(), { language: 'ja', commentsWidth: null });
   assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'settings.json'), 'utf8')).data, { language: 'ja' });
 
   await fs.writeFile(store.file, JSON.stringify({ format: 'pptx-review-canvas.settings', version: 1, data: { language: 'fr' } }));
-  assert.deepEqual(await store.load(), { language: null });
+  assert.deepEqual(await store.load(), { language: null, commentsWidth: null });
   assert.equal(logs.length, 1);
   assert.deepEqual((await fs.readdir(root)).filter((name) => name.includes('.corrupt-')).length, 1);
   assert.equal(await fs.access(store.file).then(() => true, () => false), false, 'the next save starts from a clean file');
+});
+
+test('SettingsStore keeps the width of the comments pane beside the language, and ignores a width that makes no sense', async () => {
+  const root = await makeTempDir();
+  const store = new SettingsStore(root);
+  const saved = async () => JSON.parse(await fs.readFile(store.file, 'utf8')).data;
+  await store.load();
+
+  await store.save({ commentsWidth: 420 });
+  assert.deepEqual(await saved(), { commentsWidth: 420 }, 'no language is written until the user chooses one');
+  await store.save({ language: 'ja' });
+  assert.deepEqual(await new SettingsStore(root).load(), { language: 'ja', commentsWidth: 420 });
+
+  await store.save({ commentsWidth: 99999 });
+  await store.save({ commentsWidth: 'wide' });
+  assert.deepEqual(await saved(), { language: 'ja', commentsWidth: 420 }, 'a width out of range is not saved');
+  await store.save({ commentsWidth: null });
+  assert.deepEqual(await saved(), { language: 'ja' }, 'null goes back to the default');
+
+  await fs.writeFile(store.file, JSON.stringify({ format: 'pptx-review-canvas.settings', version: 1, data: { language: 'en', commentsWidth: 5 } }));
+  assert.deepEqual(await new SettingsStore(root).load(), { language: 'en', commentsWidth: null }, 'a bad width does not cost the language');
 });

@@ -1,4 +1,4 @@
-// Checks of the package as a whole: manifests that must agree, the files a catalog needs, and the path-length limit.
+// Checks of the package as a whole: manifests that must agree, the files a catalog needs, the path-length limit, and the links in the documents.
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -35,6 +35,11 @@ test('the manifests name the same plugin at the same version', () => {
   assert.equal(plugin.$schema, 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json');
 });
 
+// The release-check workflow runs this file on a tag push; elsewhere there is no tag to compare.
+test('a release tag is v plus the plugin version', { skip: process.env.GITHUB_REF_TYPE !== 'tag' }, () => {
+  assert.equal(process.env.GITHUB_REF_NAME, `v${plugin.version}`);
+});
+
 test('the plugin manifest meets what the catalogs ask for', () => {
   assert.match(plugin.name, /^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$/);
   assert.ok(plugin.description.length > 0 && plugin.description.length <= 500);
@@ -64,15 +69,25 @@ test(`no file path is longer than ${MAX_PATH_LENGTH} characters`, () => {
   assert.deepEqual(tooLong, []);
 });
 
-test('every image the documents link to exists', () => {
-  const missing = [];
-  for (const document of ['README.md', 'README.ja.md', 'docs/architecture.md']) {
-    const file = path.join(root, document);
-    if (!fs.existsSync(file)) continue;
-    const text = fs.readFileSync(file, 'utf8');
-    for (const match of text.matchAll(/(?:\]\(|src=")(\.{1,2}\/[^)"]+\.(?:png|gif|webp))/g)) {
-      if (!fs.existsSync(path.resolve(path.dirname(file), match[1]))) missing.push(`${document}: ${match[1]}`);
+const MARKDOWN_LINK = /\]\(([^)\s]+)\)|(?:src|href)="([^"]+)"/g;
+const withoutCodeFences = (text) => text.replace(/^```[\s\S]*?^```/gm, '');
+// GitHub's heading ids: lower case, punctuation removed, spaces to hyphens.
+const headingId = (heading) => heading.trim().toLowerCase().replace(/[^\p{L}\p{N}\p{M}_ -]/gu, '').replaceAll(' ', '-');
+const headingIds = (file) => new Set([...withoutCodeFences(fs.readFileSync(file, 'utf8')).matchAll(/^#{1,6}[ \t]+(.+?)\s*$/gm)].map((match) => headingId(match[1])));
+
+test('every relative link in the documents leads to a file and a heading that exist', () => {
+  const broken = [];
+  for (const file of walk(root)) {
+    if (!file.endsWith('.md')) continue;
+    const document = path.relative(root, file).replaceAll('\\', '/');
+    for (const match of withoutCodeFences(fs.readFileSync(file, 'utf8')).matchAll(MARKDOWN_LINK)) {
+      const target = match[1] ?? match[2];
+      if (/^([a-z][a-z0-9+.-]*:|\/\/)/i.test(target)) continue;
+      const [location, anchor] = target.split('#').map(decodeURIComponent);
+      const linked = location ? path.resolve(path.dirname(file), location) : file;
+      const found = fs.existsSync(linked) && (!anchor || !linked.endsWith('.md') || headingIds(linked).has(anchor));
+      if (!found) broken.push(`${document}: ${target}`);
     }
   }
-  assert.deepEqual(missing, []);
+  assert.deepEqual(broken, []);
 });

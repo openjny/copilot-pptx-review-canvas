@@ -5,19 +5,22 @@ import { ViewerError } from './errors.mjs';
 import { DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES, createI18n, normalizeLanguage } from './i18n.mjs';
 import { createPresentationWithPowerPoint } from './new-deck.mjs';
 import { renderWithPowerPoint } from './renderer.mjs';
-import { PositionStore, SettingsStore, dataRootFor } from './store.mjs';
+import { COMMENTS_WIDTH_LIMITS, PositionStore, SettingsStore, dataRootFor, isCommentsWidth } from './store.mjs';
 import { ViewerInstance } from './viewer-instance.mjs';
 
 const ASSETS_DIR = fileURLToPath(new URL('../assets/', import.meta.url));
 
-/** The open viewers of this extension process, one per canvas instance. They all share one language, kept in `i18n`. */
+/** The open viewers of this extension process, one per canvas instance. They all share one language, kept in `i18n`, and the saved preferences. */
 export class ViewerRegistry {
-  constructor({ root = dataRootFor(), renderer = renderWithPowerPoint, creator = createPresentationWithPowerPoint, assetsDir = ASSETS_DIR, log = () => {}, watchIntervalMs, env = process.env } = {}) {
+  /** `sendToAgent({ prompt, displayPrompt })` sends a message to the agent's session; without it a review cannot be submitted. */
+  constructor({ root = dataRootFor(), renderer = renderWithPowerPoint, creator = createPresentationWithPowerPoint, assetsDir = ASSETS_DIR, log = () => {}, watchIntervalMs, env = process.env, sendToAgent } = {}) {
     this.assetsDir = assetsDir;
     this.log = log;
     this.creator = creator;
     this.watchIntervalMs = watchIntervalMs;
     this.env = env;
+    this.sendToAgent = sendToAgent;
+    this.preferences = { commentsWidth: null };
     this.i18n = createI18n({ language: normalizeLanguage(env.PPTX_CANVAS_LANG) ?? DEFAULT_LANGUAGE });
     this.settings = new SettingsStore(root, { log, i18n: this.i18n });
     this.deckCache = new DeckCache({ root, renderer, log, i18n: this.i18n });
@@ -29,12 +32,14 @@ export class ViewerRegistry {
   }
 
   /**
-   * Settles the language: the one the user saved, else PPTX_CANVAS_LANG, else English. Safe to call repeatedly; `ensure` and
-   * `setLanguage` wait for it, and extension.mjs awaits it before it registers the canvas (whose name is in that language).
+   * Settles the saved preferences: the language the user saved (else PPTX_CANVAS_LANG, else English) and the width of the comments
+   * pane. Safe to call repeatedly; `ensure` and `setLanguage` wait for it, and extension.mjs awaits it before it registers the canvas
+   * (whose name is in that language).
    */
   ready() {
-    this._ready ??= this.settings.load().then(({ language }) => {
+    this._ready ??= this.settings.load().then(({ language, commentsWidth }) => {
       if (language) this.i18n.setLanguage(language);
+      this.preferences.commentsWidth = commentsWidth;
     });
     return this._ready;
   }
@@ -53,6 +58,15 @@ export class ViewerRegistry {
     for (const instance of this._instances.values()) instance.republish();
     await saved;
     return language;
+  }
+
+  /** Saves the width of the comments pane (null goes back to the default). Viewers read it when they open, so none is told. */
+  async setCommentsWidth(value) {
+    if (value !== null && !isCommentsWidth(value)) throw new ViewerError('invalid_input', 'input.commentsWidth', COMMENTS_WIDTH_LIMITS);
+    await this.ready();
+    this.preferences.commentsWidth = value;
+    await this.settings.save({ commentsWidth: value }).catch((error) => this.log(this.i18n.t('log.settingsSaveFailed', { detail: error.message })));
+    return value;
   }
 
   /** The viewers that are open now. */
@@ -104,6 +118,9 @@ export class ViewerRegistry {
       baseDir,
       i18n: this.i18n,
       changeLanguage: (language) => this.setLanguage(language),
+      getPreferences: () => this.preferences,
+      changeCommentsWidth: (width) => this.setCommentsWidth(width),
+      sendToAgent: this.sendToAgent,
       log: (message) => this.log(message),
       ...(this.watchIntervalMs === undefined ? {} : { watchIntervalMs: this.watchIntervalMs }),
     });

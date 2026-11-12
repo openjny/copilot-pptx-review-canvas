@@ -3,6 +3,8 @@ import { createDrag } from './drag.js';
 import { icon, mountIcons } from './icons.js';
 import { applyTranslations, getLanguage, normalizeLanguage, setLanguage, t, tn } from './i18n.js';
 import { createInk } from './ink.js';
+import { createResize } from './resize.js';
+import { createReview } from './review.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -11,7 +13,6 @@ const el = {
   title: $('deck-title'),
   meta: $('deck-meta'),
   notesButton: $('btn-notes'),
-  fullscreen: $('btn-fullscreen'),
   refresh: $('btn-refresh'),
   external: $('btn-external'),
   newButton: $('btn-new'),
@@ -55,7 +56,16 @@ const el = {
   commentsAdd: $('comments-add'),
   commentsToggle: $('btn-comments'),
   commentsCount: $('comments-count'),
+  commentsResize: $('comments-resize'),
   commentLayer: $('comment-layer'),
+  submitButton: $('btn-submit'),
+  submitIcon: $('btn-submit-icon'),
+  submitLabel: $('btn-submit-label'),
+  submitPanel: $('submit-panel'),
+  submitSummary: $('submit-summary'),
+  submitNote: $('submit-note'),
+  submitCancel: $('submit-cancel'),
+  submitSend: $('submit-send'),
 };
 
 let state = null;
@@ -157,12 +167,46 @@ const comments = createComments({
   store: { read: () => readStored('pptx-viewer.comments'), write: (value) => writeStored('pptx-viewer.comments', value) },
 });
 
+const review = createReview({
+  elements: {
+    button: el.submitButton,
+    buttonIcon: el.submitIcon,
+    buttonLabel: el.submitLabel,
+    panel: el.submitPanel,
+    summary: el.submitSummary,
+    note: el.submitNote,
+    cancel: el.submitCancel,
+    send: el.submitSend,
+  },
+  getState: () => state,
+  post,
+  onError: reportError,
+  announce: say,
+  onOpen: () => setHelp(false),
+});
+
+// The width the user chose for the comments pane is saved by the server (the address of this page changes every time, so the browser
+// could not keep it). It is read from the first state only; later changes come from this page's own dragging.
+const commentsResize = createResize({
+  handle: el.commentsResize,
+  layout: el.layout,
+  onCommit: (width) => post('api/comments-width', { width }).catch(reportError),
+});
+let commentsWidthAdopted = false;
+
+function adoptCommentsWidth(width) {
+  if (commentsWidthAdopted) return;
+  commentsWidthAdopted = true;
+  if (Number.isInteger(width)) commentsResize.set(width);
+}
+
 function applyState(next) {
   if (state && next.rev < state.rev) return;
   const navigating = navigationsInFlight > 0 && state;
   state = { ...next, current: navigating ? state.current : next.current, draft: navigating ? state.draft : next.draft };
   if (next.phase !== 'error') localError = null;
   adoptLanguage(next.language);
+  adoptCommentsWidth(next.commentsWidth);
   render();
 }
 
@@ -213,6 +257,7 @@ function render() {
   renderControls();
   ink.sync(state);
   comments.sync(state);
+  review.sync();
 }
 
 function renderNotice() {
@@ -537,7 +582,6 @@ function renderControls() {
   el.external.hidden = isSketchbook();
   el.refresh.disabled = !deck || state.phase === 'rendering';
   el.external.disabled = !deck;
-  el.fullscreen.disabled = !deck;
   el.notesButton.hidden = isSketchbook();
 }
 
@@ -786,19 +830,8 @@ function toggleNotes() {
   if (state) renderNotes();
 }
 
-function toggleFullscreen() {
-  if (document.fullscreenElement) {
-    document.exitFullscreen().catch(() => {});
-    return;
-  }
-  if (!el.stage.requestFullscreen) {
-    say(t('fullscreen.unavailable'));
-    return;
-  }
-  el.stage.requestFullscreen().catch(() => say(t('fullscreen.failed')));
-}
-
 function setHelp(open) {
+  if (open) review.close();
   el.help.hidden = !open;
   el.helpButton.setAttribute('aria-expanded', String(open));
 }
@@ -858,7 +891,6 @@ el.openForm.addEventListener('submit', (event) => {
   openDeck(el.openPath.value);
 });
 el.notesButton.addEventListener('click', toggleNotes);
-el.fullscreen.addEventListener('click', toggleFullscreen);
 el.refresh.addEventListener('click', () => post('api/refresh').catch(reportError));
 el.external.addEventListener('click', () => post('api/open-external').catch(reportError));
 el.helpButton.addEventListener('click', () => setHelp(el.help.hidden));
@@ -929,11 +961,6 @@ document.addEventListener('keydown', (event) => {
     case 'N':
       if (isSketchbook()) return;
       toggleNotes();
-      break;
-    case 'f':
-    case 'F':
-      if (!state.deck) return;
-      toggleFullscreen();
       break;
     default:
       return;

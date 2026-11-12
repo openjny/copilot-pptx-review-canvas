@@ -35,6 +35,11 @@ export default {
   'unread.intro': 'In the PowerPoint Review canvas ({canvasId}), the user has drawn on pages with the pen or highlighter, commented on pages, or added new slides, and you have not read any of it yet.',
   'unread.outro': 'This message may be feedback on those marks or comments. Before you fix or create slides, call get_annotations with invoke_canvas_action to see where the marks and comments are and to view their images.',
 
+  'submit.prompt': 'I have finished reviewing "{deck}" in the PowerPoint Review canvas (canvas {canvasId}, instanceId {instanceId}) and I am submitting my review. New feedback: {scope}.',
+  'submit.note': 'My overall instructions: {note}',
+  'submit.outro': 'Call get_annotations on that canvas instance with invoke_canvas_action to read my marks, comments and new slides. Then make every change in the deck, save it, and tell me what you changed. If a comment is unclear or contradicts another, ask me before editing.',
+  'submit.display': 'Review submitted: {deck} ({scope})',
+
   'report.nothing': 'There are no marks, comments or new slides.',
   'report.imagesOmitted': 'The images of the remaining pages were left out because maxImages was reached. Ask for them with slide or draft.',
 
@@ -49,6 +54,10 @@ export default {
   'error.unexpected': 'Unexpected error: {detail}',
   'error.instanceNotFound': 'This canvas is not open. Open it with open_canvas first.',
   'error.serverStartFailed': 'Could not start the viewer server: {detail}',
+  'error.nothingToSubmit': 'There is nothing new to submit. Draw, comment or add a new slide first.',
+  'error.alreadySubmitted': 'This review has already been submitted. Draw or comment again to submit more.',
+  'error.agentUnavailable': 'The agent’s session is not available, so the review can’t be submitted.',
+  'error.agentSendFailed': 'Couldn’t send the review to the agent: {detail}',
   'error.noDeck': 'No deck is open. Open a file first.',
   'error.slideOutOfRange': 'The slide number must be between 1 and {count}.',
   'error.afterRange': 'after must be an integer from 0 to {max}.',
@@ -218,6 +227,9 @@ export default {
   'input.slideInt': 'slide must be an integer.',
   'input.slideOrDraft': 'Give slide as an integer, or draft as a string.',
   'input.languageInvalid': 'language must be one of: {languages}.',
+  'input.noteString': 'note must be a string.',
+  'input.noteTooLong': 'The note can be at most {max} characters.',
+  'input.commentsWidth': 'width must be a whole number of pixels from {min} to {max}, or null.',
 
   'http.contentType': 'Content-Type must be application/json.',
   'http.bodyTooLarge': 'The request is too large.',

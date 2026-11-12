@@ -175,6 +175,38 @@ body {
 .help__keys dd { margin: 0; color: var(--muted); }
 kbd { padding: 0 5px; font: inherit; font-size: 12px; background: var(--hover); border: 1px solid var(--line); border-radius: 4px; }
 
+/* ---- submitting the review: the button at the right end of the bar, and the panel under it ----------------------- */
+
+.submit__btn { display: inline-flex; align-items: center; gap: 6px; margin-left: 10px; font-weight: 600; white-space: nowrap; }
+.submit__btn .icon { width: 16px; height: 16px; }
+.submit__btn[aria-expanded="true"] { box-shadow: 0 0 0 2px var(--accent-soft), 0 0 0 3px var(--accent); }
+/* "Submitted" is a state, not a disabled button, so it keeps its full colour. */
+.submit__btn.is-done:disabled { opacity: 1; color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
+.submit {
+  position: absolute;
+  top: 44px;
+  right: 12px;
+  z-index: 30;
+  display: grid;
+  gap: 8px;
+  width: min(400px, calc(100vw - 24px));
+  max-height: calc(100vh - 64px);
+  padding: 14px 16px;
+  overflow: auto;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+}
+.submit__title { margin: 0; font-size: 14px; }
+.submit__lead { margin: 0; color: var(--muted); }
+.submit__summary { margin: 0; font-weight: 600; }
+.submit__summary:empty { display: none; }
+.submit__label { font-weight: 600; }
+.submit__note { display: block; width: 100%; min-height: 5em; padding: 6px 8px; font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; resize: vertical; }
+.submit__note:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 1px var(--accent); }
+.submit__actions { display: flex; justify-content: flex-end; gap: 8px; }
+
 /* ---- open / new panel -------------------------------------------------------------------------------------- */
 
 .open { padding: 12px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
@@ -238,7 +270,6 @@ kbd { padding: 0 5px; font: inherit; font-size: 12px; background: var(--hover); 
 .rail { grid-column: 1 / -1; grid-row: 3; }
 
 .stage { position: relative; display: flex; align-items: center; justify-content: center; min-width: 0; min-height: 0; padding: 8px 12px; background: var(--stage); }
-.stage:fullscreen { padding: 0; background: #000; }
 .stage__figure { container-type: size; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; min-height: 0; margin: 0; }
 .slidebox {
   position: relative;
@@ -264,13 +295,22 @@ kbd { padding: 0 5px; font: inherit; font-size: 12px; background: var(--hover); 
 /* ---- comments: the pane on the right, and the markers on the slide ----------------------------------------- */
 
 .comments {
+  position: relative;
   display: flex;
   flex-direction: column;
-  width: 320px;
+  width: var(--comments-width, 320px);
+  min-width: 240px;
+  max-width: 60vw;
   min-height: 0;
   background: var(--panel);
   border-left: 1px solid var(--line);
 }
+/* The edge of the pane that the user drags; a little wider than the line it sits on, so it is easy to catch. */
+.comments__resize { position: absolute; top: 0; bottom: 0; left: -5px; z-index: 3; width: 10px; cursor: col-resize; touch-action: none; }
+.comments__resize::after { content: ""; position: absolute; top: 0; bottom: 0; left: 3px; width: 3px; background: transparent; border-radius: 2px; }
+.comments__resize:hover::after, .comments__resize:focus-visible::after, .comments__resize.is-dragging::after { background: var(--accent); }
+.comments__resize:focus-visible { outline: none; }
+body.is-resizing { cursor: col-resize; user-select: none; }
 .comments__head { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 8px 6px 14px; border-bottom: 1px solid var(--line); }
 .comments__title { margin: 0; font-size: 13px; font-weight: 600; }
 .comments__list { flex: 1 1 auto; display: grid; align-content: start; gap: 10px; min-height: 0; margin: 0; padding: 10px 12px; overflow-y: auto; list-style: none; }

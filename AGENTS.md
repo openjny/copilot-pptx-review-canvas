@@ -16,7 +16,12 @@ How to work in this repository, for agents and people. [README.md](./README.md) 
 - **No dependencies and no build step.** Do not add a package or a bundler.
 - **Existing data must keep loading.** Records are `{ format, version, data }`; changing a record shape needs a new version and a migration. Data written by older versions (Japanese draft titles, for example) is still read.
 - **Short paths.** Keep every file path in the repository at 72 characters or fewer; see CONTRIBUTING.md for why.
+- **One version, four places, one tag.** Release steps are in CONTRIBUTING.md ("Releasing"); `test/package.test.mjs` checks that the files agree.
+- **README stays short.** Details go to `docs/` with a `docs/ja/` mirror; see CONTRIBUTING.md.
 - **No one-click VS Code install link in a README.** GitHub removes `vscode://` links when it renders Markdown, and `https://vscode.dev/redirect` appends `&url=...` to the link it opens, which VS Code decodes into a second `plugin` parameter ("The plugin link must specify a plugin name."). Describe the steps in words. A `vscode://chat-plugin/install?source=owner%2Frepo&plugin=name` link works only on a page that keeps it, such as the Awesome Copilot listing.
+- **Assets are read when a viewer starts.** After editing a file in `assets/`, open a new viewer (or restart a test harness) before checking the page; a running viewer keeps serving the old copy.
+- **A tool button toggles off when clicked while active.** In a browser test, select another tool or do not click the active one before drawing.
+- **Check icons at 18 px.** The pen, highlighter and eraser in `assets/icons.js` must stay distinguishable at toolbar size; look at them rendered, not only as SVG source.
 - **Screenshots** in `docs/images/` and `assets/preview.png` show only the sample deck on a neutral path (no user names, no real decks). Retake them when the UI changes: start a viewer with the real renderer on a copy of the sample deck, and drive the page with a browser.
 
 ## Commits
