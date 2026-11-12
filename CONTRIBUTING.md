@@ -51,6 +51,14 @@ Uninstall any other copy of the plugin first, so that the canvas is not register
 - Describe the change, how you tested it, and your Windows and PowerPoint versions for anything that touches rendering or the file rewrite. Add a before and after screenshot for UI changes.
 - Keep a pull request to one topic.
 
+## Releasing
+
+The plugin version and the git tag are the same number.
+
+1. Set the same SemVer `version` in `plugin.json`, `package.json` and `.github/plugin/marketplace.json` (twice: `metadata.version` and the plugin entry). `npm test` fails when they differ.
+2. Merge to `main`, then tag the merge commit `v<version>` (for example `v1.1.0`) and push the tag. The `release-check` workflow fails the run when the tag and `plugin.json` disagree.
+3. Do not move a published tag; release a new version instead.
+
 ## Reporting a bug
 
 Open an issue with the steps to reproduce, what you expected and what happened, your Windows and PowerPoint versions, and which Copilot client you use (VS Code, Copilot CLI or the Copilot app). The extension writes its logs to the session timeline, and its data is kept under `~/.copilot/extension-data/pptx-review-canvas/`; please do not attach decks that contain confidential information.

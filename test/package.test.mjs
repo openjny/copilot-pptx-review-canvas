@@ -35,6 +35,11 @@ test('the manifests name the same plugin at the same version', () => {
   assert.equal(plugin.$schema, 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json');
 });
 
+// The release-check workflow runs this file on a tag push; elsewhere there is no tag to compare.
+test('a release tag is v plus the plugin version', { skip: process.env.GITHUB_REF_TYPE !== 'tag' }, () => {
+  assert.equal(process.env.GITHUB_REF_NAME, `v${plugin.version}`);
+});
+
 test('the plugin manifest meets what the catalogs ask for', () => {
   assert.match(plugin.name, /^[a-z0-9]([a-z0-9.-]*[a-z0-9])?$/);
   assert.ok(plugin.description.length > 0 && plugin.description.length <= 500);

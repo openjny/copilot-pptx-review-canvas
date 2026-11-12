@@ -1,0 +1,19 @@
+name: release-check
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+      # Fails when the tag is not v<plugin.json version>, or when the manifests disagree.
+      - run: node --test test/package.test.mjs
