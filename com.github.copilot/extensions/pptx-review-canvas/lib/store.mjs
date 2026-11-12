@@ -188,9 +188,14 @@ export class PositionStore {
 const SETTINGS_FORMAT = 'pptx-review-canvas.settings';
 const SETTINGS_VERSION = 1;
 
+/** Sanity bounds for the saved width of the comments pane, in pixels. The page decides the range the user can drag within. */
+export const COMMENTS_WIDTH_LIMITS = { min: 200, max: 1200 };
+
+export const isCommentsWidth = (value) => Number.isInteger(value) && value >= COMMENTS_WIDTH_LIMITS.min && value <= COMMENTS_WIDTH_LIMITS.max;
+
 function validateSettings(data) {
   if (!data || typeof data !== 'object' || Array.isArray(data)) return msg('record.notObject');
-  if (normalizeLanguage(data.language) === null) return msg('settings.languageInvalid');
+  if (data.language !== undefined && normalizeLanguage(data.language) === null) return msg('settings.languageInvalid');
   return null;
 }
 
@@ -201,13 +206,22 @@ export class SettingsStore {
     this.log = log;
     this.i18n = i18n;
     this._write = Promise.resolve();
+    this._data = {};
   }
 
-  /** `{ language }`: the saved language ('en' or 'ja'), or null when nothing usable is saved. An unusable file is kept aside, not overwritten. */
+  /**
+   * `{ language, commentsWidth }`: the saved language ('en' or 'ja') and width of the comments pane, each null when nothing usable is saved.
+   * A file that cannot be used is kept aside, not overwritten; a width that is out of range is ignored and the rest is kept.
+   */
   async load() {
     try {
       const record = await readRecord(this.file, { format: SETTINGS_FORMAT, version: SETTINGS_VERSION, validate: validateSettings });
-      if (record.status === 'ok') return { language: normalizeLanguage(record.data.language) };
+      if (record.status === 'ok') {
+        const language = normalizeLanguage(record.data.language);
+        const commentsWidth = isCommentsWidth(record.data.commentsWidth) ? record.data.commentsWidth : null;
+        this._data = { ...(language ? { language } : {}), ...(commentsWidth === null ? {} : { commentsWidth }) };
+        return { language, commentsWidth };
+      }
       if (record.status === 'invalid') {
         const kept = await quarantine(this.file).catch(() => null);
         this.log(this.i18n.t(kept ? 'log.settingsInvalidKept' : 'log.settingsInvalid', { reason: record.reason, kept }));
@@ -215,12 +229,25 @@ export class SettingsStore {
     } catch (error) {
       this.log(this.i18n.t('log.settingsUnreadable', { detail: error.message }));
     }
-    return { language: null };
+    return { language: null, commentsWidth: null };
   }
 
-  /** Saves the language. Saves run in the order they were asked for, so the last choice is the one on disk. */
-  save({ language }) {
-    const data = { language: normalizeLanguage(language) };
+  /**
+   * Saves what is in `patch` (`language`, `commentsWidth`; null clears the width) and keeps the rest of the file. Saves run in the
+   * order they were asked for, so the last choice is the one on disk.
+   */
+  save(patch) {
+    const next = { ...this._data };
+    if ('language' in patch) {
+      const language = normalizeLanguage(patch.language);
+      if (language) next.language = language;
+    }
+    if ('commentsWidth' in patch) {
+      if (patch.commentsWidth === null) delete next.commentsWidth;
+      else if (isCommentsWidth(patch.commentsWidth)) next.commentsWidth = patch.commentsWidth;
+    }
+    this._data = next;
+    const data = { ...next };
     const write = this._write.catch(() => {}).then(() => writeRecord(this.file, SETTINGS_FORMAT, SETTINGS_VERSION, data));
     this._write = write;
     return write;

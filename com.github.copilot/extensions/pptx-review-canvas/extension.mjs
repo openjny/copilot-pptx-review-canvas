@@ -9,7 +9,17 @@ let session;
 const log = (message) => {
   session?.log(`[${CANVAS_ID}] ${message}`, { ephemeral: true }).catch(() => {});
 };
-const registry = new ViewerRegistry({ log });
+// The message the viewer last sent as a submitted review. It already tells the agent where to read the marks, so the hook below
+// does not add the same note to it.
+let submittedPrompt = null;
+const registry = new ViewerRegistry({
+  log,
+  sendToAgent: async ({ prompt, displayPrompt }) => {
+    if (!session) throw new Error('the session has not been joined yet');
+    submittedPrompt = prompt;
+    await session.send({ prompt, displayPrompt });
+  },
+});
 // The language (the one the user chose in the viewer, or PPTX_CANVAS_LANG) has to be known before the canvas is registered under its name.
 await registry.ready();
 const t = (key, params) => registry.i18n.t(key, params);
@@ -346,7 +356,11 @@ const pptxReviewCanvas = createCanvas({
 session = await joinSession({
   canvases: [pptxReviewCanvas],
   hooks: {
-    onUserPromptSubmitted: async () => {
+    onUserPromptSubmitted: async (input) => {
+      if (submittedPrompt !== null && input?.prompt === submittedPrompt) {
+        submittedPrompt = null;
+        return undefined;
+      }
       try {
         const additionalContext = unreadMarksContext();
         return additionalContext ? { additionalContext } : undefined;

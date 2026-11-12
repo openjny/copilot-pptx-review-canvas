@@ -16,7 +16,7 @@ import { commitRewrite, isReorderableExtension, reorderSlidesInFile } from './pp
 import { whitePng } from './png.mjs';
 import { compositeAnnotations } from './raster.mjs';
 import { SKETCHBOOK_EXTENSION, createSketchbook, resolveSketchbook } from './sketchbook.mjs';
-import { samePath } from './store.mjs';
+import { CANVAS_ID, samePath } from './store.mjs';
 
 const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '[::1]']);
 const MAX_BODY_BYTES = 16 * 1024;
@@ -34,12 +34,15 @@ const ASSET_TYPES = {
   'drag.js': 'text/javascript; charset=utf-8',
   'icons.js': 'text/javascript; charset=utf-8',
   'comments.js': 'text/javascript; charset=utf-8',
+  'resize.js': 'text/javascript; charset=utf-8',
+  'review.js': 'text/javascript; charset=utf-8',
   'i18n.js': 'text/javascript; charset=utf-8',
   'locales/en.js': 'text/javascript; charset=utf-8',
   'locales/ja.js': 'text/javascript; charset=utf-8',
 };
 
-const CONFLICT_CODES = new Set(['no_deck', 'not_ready', 'busy', 'file_changed', 'file_locked', 'file_exists', 'history_changed', 'history_conflict']);
+const CONFLICT_CODES = new Set(['no_deck', 'not_ready', 'busy', 'file_changed', 'file_locked', 'file_exists', 'history_changed', 'history_conflict', 'nothing_to_submit', 'already_submitted', 'agent_unavailable']);
+const MAX_REVIEW_NOTE = 2000;
 const UNDO_FILE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 /** An error that answers a request with a given status; it is a ViewerError, so its text is rendered in the current language like any other. */
@@ -113,7 +116,11 @@ const deckName = (deck) => path.basename(deck.source.path, isSketchbook(deck) ? 
 
 /** One slide viewer: an HTTP server on loopback that shows one deck, lets the user mark it up, and keeps its page in sync over server-sent events. */
 export class ViewerInstance {
-  constructor({ instanceId, deckCache, positions, annotationStore, assetsDir, baseDir, log = () => {}, watchIntervalMs = WATCH_INTERVAL_MS, creator = createPresentationWithPowerPoint, i18n = createI18n(), changeLanguage }) {
+  /**
+   * `sendToAgent({ prompt, displayPrompt })` sends a message to the agent (without it a review cannot be submitted);
+   * `getPreferences()` and `changeCommentsWidth(width)` read and save the user's preferences, which the registry owns.
+   */
+  constructor({ instanceId, deckCache, positions, annotationStore, assetsDir, baseDir, log = () => {}, watchIntervalMs = WATCH_INTERVAL_MS, creator = createPresentationWithPowerPoint, i18n = createI18n(), changeLanguage, sendToAgent, getPreferences, changeCommentsWidth }) {
     this.instanceId = instanceId;
     this.deckCache = deckCache;
     this.positions = positions;
@@ -124,6 +131,11 @@ export class ViewerInstance {
     this.log = log;
     this.i18n = i18n;
     this.t = (key, params) => this.i18n.t(key, params);
+    this.sendToAgent = sendToAgent;
+    this.getPreferences = getPreferences ?? (() => ({ commentsWidth: null }));
+    this.changeCommentsWidth = changeCommentsWidth ?? (async (width) => width);
+    // The version of the marks that was last submitted, so the same marks are not submitted twice; any change to them makes a new version.
+    this._submittedVersion = null;
     // Saving the language and telling every viewer is the registry's job; on its own, a viewer only switches itself.
     this.changeLanguage = changeLanguage ?? (async (language) => {
       this.i18n.setLanguage(language);
@@ -241,6 +253,7 @@ export class ViewerInstance {
     return {
       rev: this._rev,
       language: this.i18n.language,
+      commentsWidth: this.getPreferences().commentsWidth ?? null,
       phase,
       current,
       draft,
@@ -250,6 +263,7 @@ export class ViewerInstance {
       recent,
       notice: this._notice && { id: this._notice.id, text: this._noticeText(this._notice.parts) },
       annotations: this._annotationInfo(),
+      review: this.reviewInfo(),
       history: this._history.view(),
       deck: deck && {
         key: deck.key,
@@ -806,6 +820,54 @@ export class ViewerInstance {
     return { deck: deckName(this._state.deck), path: this._state.deck.source.path, slides, drafts };
   }
 
+  /**
+   * What the page needs for the submit button: whether there is something the agent has not read (`slides`, `drafts`), and whether it
+   * has been submitted already (`submitted`) or can be (`canSubmit`). Reading the marks, or changing them, ends "submitted".
+   */
+  reviewInfo() {
+    const unread = this.unreadAnnotations();
+    if (!unread) return { canSubmit: false, submitted: false, slides: [], drafts: 0 };
+    const submitted = this._submittedVersion === this._annotationInfo().version;
+    return { canSubmit: Boolean(this.sendToAgent) && !submitted, submitted, slides: unread.slides, drafts: unread.drafts.length };
+  }
+
+  /** The message that asks the agent to act on the review: what it says to the agent, and the shorter text the chat shows in its place. */
+  _reviewMessage(unread, note) {
+    const scope = [];
+    if (unread.slides.length) scope.push(this.t('unread.slides', { list: unread.slides }));
+    if (unread.drafts.length) scope.push(this.t('unread.drafts', { count: unread.drafts.length }));
+    const params = { deck: unread.deck, canvasId: CANVAS_ID, instanceId: this.instanceId, scope: scope.join(' / ') };
+    return {
+      prompt: [this.t('submit.prompt', params), note && this.t('submit.note', { note }), this.t('submit.outro')].filter(Boolean).join('\n\n'),
+      displayPrompt: [this.t('submit.display', params), note].filter(Boolean).join('\n'),
+    };
+  }
+
+  /**
+   * The user finishing the review: asks the agent, in the session this viewer belongs to, to read the marks, comments and new slides
+   * and to make the changes. The message is queued behind whatever the agent is doing. Only marks the agent has not read can be
+   * submitted, and the same marks only once.
+   */
+  async submitReview({ note } = {}) {
+    if (!this.sendToAgent) throw new ViewerError('agent_unavailable', 'error.agentUnavailable');
+    this._requireBook();
+    if (note !== undefined && typeof note !== 'string') throw new ViewerError('invalid_input', 'input.noteString');
+    const text = (note ?? '').trim();
+    if (text.length > MAX_REVIEW_NOTE) throw new ViewerError('invalid_input', 'input.noteTooLong', { max: MAX_REVIEW_NOTE });
+    const unread = this.unreadAnnotations();
+    if (!unread) throw new ViewerError('nothing_to_submit', 'error.nothingToSubmit');
+    const version = this._annotationInfo().version;
+    if (this._submittedVersion === version) throw new ViewerError('already_submitted', 'error.alreadySubmitted');
+    try {
+      await this.sendToAgent(this._reviewMessage(unread, text));
+    } catch (error) {
+      throw new ViewerError('agent_unavailable', 'error.agentSendFailed', { detail: error?.message ?? String(error) });
+    }
+    this._submittedVersion = version;
+    this._publish();
+    return { submitted: true };
+  }
+
   async _shapesFor(key) {
     if (this._shapes.key !== key) this._shapes = { key, value: await this.deckCache.readShapes(key) };
     return this._shapes.value;
@@ -1200,6 +1262,14 @@ export class ViewerInstance {
       const language = normalizeLanguage(body.language);
       if (!language) throw new HttpError(400, 'invalid_input', 'input.languageInvalid', { languages: SUPPORTED_LANGUAGES });
       return sendJson(res, 200, { language: await this.changeLanguage(language) });
+    }
+    if (pathname === '/api/comments-width' && method === 'POST') {
+      const body = await readJsonBody(req);
+      return sendJson(res, 200, { width: await this.changeCommentsWidth(body.width ?? null) });
+    }
+    if (pathname === '/api/review/submit' && method === 'POST') {
+      const body = await readJsonBody(req);
+      return sendJson(res, 200, await this.submitReview({ note: body.note }));
     }
     throw new HttpError(404, 'not_found', 'http.notFound');
   }

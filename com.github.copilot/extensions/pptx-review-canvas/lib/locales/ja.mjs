@@ -35,6 +35,11 @@ export default {
   'unread.intro': 'PowerPoint レビュー（canvas {canvasId}）で、ユーザーがペンや蛍光ペンで書き込んだページ、コメントを書いたページ、または新しいスライドを追加したページがあります。まだ読んでいません。',
   'unread.outro': '今回のメッセージはこの書き込みやコメントへのフィードバックかもしれません。スライドを直す・作る前に、invoke_canvas_action で get_annotations を呼び、書き込みやコメントの位置と画像を確認してください。',
 
+  'submit.prompt': 'PowerPoint レビュー（canvas {canvasId}、instanceId {instanceId}）で「{deck}」のレビューを終えたので、提出します。新しい指摘: {scope}。',
+  'submit.note': '全体への指示: {note}',
+  'submit.outro': 'invoke_canvas_action でそのキャンバスの get_annotations を呼び、書き込み、コメント、新しいスライドを読んでください。そのうえで、資料のすべての修正を行って保存し、何を直したかを教えてください。コメントが不明確だったり、互いに矛盾していたりする場合は、編集する前に質問してください。',
+  'submit.display': 'レビューを提出しました: {deck}（{scope}）',
+
   'report.nothing': '書き込みもコメントも新しいスライドもありません。',
   'report.imagesOmitted': 'maxImages に達したため、残りのページの画像は省略しました。slide か draft を指定して取得してください。',
 
@@ -49,6 +54,10 @@ export default {
   'error.unexpected': '予期しないエラー: {detail}',
   'error.instanceNotFound': 'このキャンバスは開かれていません。先に open_canvas で開いてください。',
   'error.serverStartFailed': 'ビューアのサーバーを起動できませんでした: {detail}',
+  'error.nothingToSubmit': '提出できる新しい内容がありません。書き込み、コメント、新しいスライドを足してください。',
+  'error.alreadySubmitted': 'このレビューは提出済みです。続けて書き込むかコメントすると、もう一度提出できます。',
+  'error.agentUnavailable': 'エージェントのセッションを使えないため、レビューを提出できません。',
+  'error.agentSendFailed': 'エージェントにレビューを送れませんでした: {detail}',
   'error.noDeck': 'スライドが開かれていません。先にファイルを開いてください。',
   'error.slideOutOfRange': 'スライド番号は 1 から {count} の範囲で指定してください。',
   'error.afterRange': 'after は 0 から {max} の整数で指定してください。',
@@ -218,6 +227,9 @@ export default {
   'input.slideInt': 'slide を整数で指定してください。',
   'input.slideOrDraft': 'slide を整数、または draft を文字列で指定してください。',
   'input.languageInvalid': 'language は {languages} のいずれかで指定してください。',
+  'input.noteString': 'note は文字列で指定してください。',
+  'input.noteTooLong': '補足は {max} 文字までです。',
+  'input.commentsWidth': 'width は {min} から {max} の整数（ピクセル）か null で指定してください。',
 
   'http.contentType': 'Content-Type は application/json にしてください。',
   'http.bodyTooLarge': 'リクエストが大きすぎます。',
