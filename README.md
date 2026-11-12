@@ -19,9 +19,11 @@ English | [日本語](./README.ja.md)
 
 ## Why
 
+![You mark up slides and press Submit review in the canvas. The canvas passes your feedback to the agent as data. The agent edits and saves the presentation, and the canvas renders it again and shows you fresh slide images](./docs/images/concept.png)
+
 Giving feedback on a deck in chat means describing positions in words: "on slide 5, the third bullet, make it shorter". It is slow, and the agent has to guess what you mean.
 
-With this canvas you point instead. The agent receives:
+With this canvas you point instead. It sits between you and your agent, and the agent receives:
 
 - the slide image with your marks and numbered comments on it,
 - each mark and comment as data, with its position on the slide,
@@ -36,6 +38,11 @@ With this canvas you point instead. The agent receives:
 - **Local and private**: slides are rendered by your own PowerPoint, and nothing leaves your PC.
 - **English and Japanese** interface.
 
+<details>
+<summary>📸 <b>Screenshots</b></summary>
+
+<br>
+
 <table>
   <tr>
     <td width="50%"><img src="./docs/images/submit.png" alt="The Submit review panel with a note for the agent"><br><sub><b>Submit review</b>: one button sends everything to the agent.</sub></td>
@@ -46,6 +53,8 @@ With this canvas you point instead. The agent receives:
     <td width="50%"><img src="./docs/images/reorder.png" alt="Dragging a slide in the strip with an insertion line"><br><sub><b>Reorder</b>: drag in the strip and drop at the line.</sub></td>
   </tr>
 </table>
+
+</details>
 
 ## Requirements
 
