@@ -121,10 +121,10 @@ Records are `{ format, version, data }` files written atomically. A record that 
 
 English is the default and Japanese is the second language. The server (`lib/locales/`) and the page (`assets/locales/`) each have a catalog per language, addressed by dotted keys with `{placeholder}` templates; a missing key falls back to English.
 
-- The language is stored in `settings.json`. When there is none, `PPTX_CANVAS_LANG` (`en` or `ja`) is used, then English.
+- Which language is used, and how to change it, is in [Using the canvas](./usage.md#language). The choice is stored in `settings.json`.
 - `POST /api/language` saves the choice, switches the shared server catalog and pushes a new state to every open viewer. The state carries texts that were rendered in the current language, and `language` itself; the page switches its own catalog when it sees a new value.
 - Errors raised deep in the code carry a message key and parameters, so an error that is still in the state is shown in the new language after a switch.
-- The canvas name is registered once at start-up, so it follows a language change only after the next start. Text meant for the agent (action descriptions, the format of marks) stays in English; the texts of the unread-marks hook and of errors follow the language.
+- The canvas name is registered once at start-up (see the link above). Text meant for the agent (action descriptions, the format of marks) stays in English; the texts of the unread-marks hook and of errors follow the language.
 - New slides are always named `New slide N` in data; the Japanese names written by earlier versions are still recognized and rewritten when read.
 
 `test/i18n.test.mjs` and `test/ui-i18n.test.mjs` check that both catalogs have the same keys and placeholders, and that every key used in the code exists.
