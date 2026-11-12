@@ -34,16 +34,21 @@ Then it edits the deck, the canvas re-renders the file by itself, and you review
 | | |
 |:--|:--|
 | **Draw on slides** | Pen, highlighter and eraser, five colors, three widths, undo and redo. Marks are kept per slide and stay on a slide as long as its picture does not change. |
-| **Comment like in PowerPoint** | Click a spot, drag an area, or comment on the whole slide. Pins are numbered and the same numbers reach the agent. |
+| **Comment like in PowerPoint** | Click a spot, drag an area, or comment on the whole slide. Pins are numbered and the same numbers reach the agent. Drag the edge of the comment panel to make it as wide as you like. |
 | **Sketch new slides** | Add a blank slide between any two slides and sketch the layout. It exists only in the viewer until the agent builds it. No deck yet? Start a sketchbook. |
 | **Reorder and delete** | Drag slides in the strip to reorder, or remove them, with a backup of the file and undo. Only the slide list inside the `.pptx` is rewritten, so nothing is re-saved by PowerPoint. |
+| **Submit when you are done** | Press **Submit review** and the agent is asked to read your marks, comments and new slides and to make the changes. Add a note for anything the marks do not say. |
 | **Made for the agent** | Actions to open a deck, jump to a slide, read the outline, notes and marks, and rebuild. It tells the agent when you have unread marks. |
 | **Local and private** | Renders through your own PowerPoint. Everything stays on your PC: no telemetry, no remote assets. |
 | **English and Japanese** | Switch in the help panel. |
 
 <table>
   <tr>
+    <td width="50%"><img src="./docs/images/submit.png" alt="The Submit review panel with a note for the agent"><br><sub><b>Submit review</b>: one button sends everything to the agent.</sub></td>
     <td width="50%"><img src="./docs/images/comments.png" alt="Writing a comment on a dragged area"><br><sub><b>Comments</b>: a point, an area or the whole slide.</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="./docs/images/resize.png" alt="Dragging the edge of the comment panel to make it wider"><br><sub><b>Your layout</b>: drag the comment panel to the width you want.</sub></td>
     <td width="50%"><img src="./docs/images/new-slide.png" alt="A sketch on a new slide between two slides"><br><sub><b>New slide</b>: sketch an idea, the agent builds it.</sub></td>
   </tr>
   <tr>
@@ -56,7 +61,7 @@ Then it edits the deck, the canvas re-renders the file by itself, and you review
 
 ```mermaid
 flowchart LR
-  A[You draw and comment on the slide] --> B[You tell the agent in chat]
+  A[You draw and comment on the slide] --> B[You press Submit review, or tell the agent in chat]
   B --> C[Agent reads marks, comments and the numbered image]
   C --> D[Agent edits and saves the deck]
   D --> E[Canvas re-renders the file]
@@ -64,8 +69,9 @@ flowchart LR
 ```
 
 - Marks are stored as fractions of the slide (0 to 1), so they stay in place at any window size.
+- **Submit review** sends a message to the agent in the session that opened the canvas. It says which deck and which slides have new feedback, carries your note, and tells the agent to read everything with `get_annotations`. If the agent is busy, the message waits its turn. Only feedback the agent has not read yet can be submitted, and the same feedback only once; drawing or commenting again makes the button available again.
 - When the agent saves a new version, marks stay on slides whose picture did not change. Marks on changed slides move to an archive, so old feedback does not point at new content.
-- On your next message, the canvas tells the agent which slides have marks it has not read yet.
+- If you write to the agent in chat instead, the canvas tells it on your next message which slides have marks it has not read yet.
 - The canvas does not edit slide content. Your agent does that with its own tools, such as python-pptx, a build script or PowerPoint automation.
 
 ## Requirements
@@ -91,13 +97,13 @@ Start a new session afterwards: a canvas appears only in sessions that begin aft
 > The canvas id is `pptx-review-canvas`. Install the plugin from one source only: the same plugin installed from two sources registers the canvas twice.
 
 > [!NOTE]
-> The extension registers one hook that runs when you send a message: if you have marks that the agent has not read yet, it adds a short hidden note saying so. Because hooks are a privileged capability, your Copilot client asks you to approve the extension the first time. The hook is in [`extension.mjs`](./com.github.copilot/extensions/pptx-review-canvas/extension.mjs).
+> The extension registers one hook that runs when you send a message: if you have marks that the agent has not read yet, it adds a short hidden note saying so. Because hooks are a privileged capability, your Copilot client asks you to approve the extension the first time. The hook is in [`extension.mjs`](./com.github.copilot/extensions/pptx-review-canvas/extension.mjs). **Submit review** sends a message to the agent through the same session API.
 
 ## Quick start
 
 1. Start a new Copilot session and ask: *"Open `samples/q3-review.pptx` in PowerPoint Review."* The first render takes a few seconds while PowerPoint starts.
 2. Pick the comment tool (`C`) and click a spot on a slide, or draw a circle with the pen (`P`). Add a few comments.
-3. Tell the agent what to do: *"Apply my marks and comments."* It reads them, edits the deck and saves. The canvas refreshes by itself.
+3. Press **Submit review** at the top right, add a note if you like, and submit. The agent reads your marks and comments, edits the deck and saves it. The canvas refreshes by itself. (You can also just tell the agent in chat, for example *"Apply my marks and comments."*)
 
 To start from nothing, use **Open a deck** in the top bar, then **Start a sketchbook**, or ask the agent to create a new deck.
 
@@ -112,11 +118,12 @@ To start from nothing, use **Open a deck** in the top bar, then **Start a sketch
 | Undo and redo | `Ctrl+Z` `Ctrl+Y` | Undoes marks, comment deletions and slide deletions, latest first. |
 | Show or hide marks | `M` | |
 | Notes | `N` | Shows the speaker notes. |
-| Full screen | `F` | |
 | Previous and next slide | `←` `→` | |
 | Move the current slide | `Alt+←` `Alt+→` | Rewrites the `.pptx`; a backup is kept. |
 | New slide after the current one | `Ctrl+M` | |
 | Delete the current slide | `Delete` | Undo with `Ctrl+Z`. |
+| Submit review | | The button at the top right opens a panel with an optional note (`Ctrl+Enter` submits). It works when the agent has something new to read. |
+| Comment panel width | | Drag its left edge. Double-click the edge to reset; with the edge focused, `←` `→` change the width (hold `Shift` for bigger steps). The width is remembered. |
 
 Hover between two slides in the strip and press **+** to add a new slide there. Press **?** for the in-app help.
 

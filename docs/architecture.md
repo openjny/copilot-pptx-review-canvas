@@ -34,7 +34,7 @@ All paths are inside `com.github.copilot/extensions/pptx-review-canvas/`.
 
 | File | Responsibility |
 |:--|:--|
-| `extension.mjs` | Registers the canvas, validates action input, and adds a hook that tells the agent about unread marks. |
+| `extension.mjs` | Registers the canvas, validates action input, sends the message of a submitted review to the agent's session, and adds a hook that tells the agent about unread marks. |
 | `lib/registry.mjs` | One viewer per canvas instance; owns the shared stores, the deck cache and the i18n object. |
 | `lib/viewer-instance.mjs` | The HTTP server, state snapshots and events, file watching, and the API for marks, comments, new slides, reordering, deleting and creating decks. |
 | `lib/deck-cache.mjs` | Render cache. Shares a running render and stops it only when everyone gave up. Reordering reuses already rendered images (`derive`). |
@@ -50,12 +50,14 @@ All paths are inside `com.github.copilot/extensions/pptx-review-canvas/`.
 | `lib/annotations.mjs` | Validates, stores and carries over marks, comments and new slides. They follow a slide by the hash of its image, or by position. |
 | `lib/marks.mjs` | Groups strokes into marks and finds the shapes under a mark or comment. |
 | `lib/raster.mjs`, `lib/png.mjs` | Draws mark numbers (black) and comment rectangles and numbers (blue) onto PNGs, and writes blank pages. |
-| `lib/store.mjs` | Atomic record files, the data root, per-deck last position, and settings. |
+| `lib/store.mjs` | Atomic record files, the data root, per-deck last position, and settings (the language and the width of the comments pane). |
 | `lib/i18n.mjs`, `lib/locales/` | Message catalogs for everything the server says, see [Languages](#languages). |
 | `assets/index.html`, `assets/styles.css` | Structure and look. The page policy is `style-src 'self'`, so there are no inline styles. |
 | `assets/main.js` | The page: the strip, the **+** buttons, new slides, keys, help, opening and creating decks. |
 | `assets/ink.js` | Drawing, the comment tool (click for a point, drag for an area), tools, undo and redo. |
 | `assets/comments.js` | The comment list, pins on the slide, and adding, editing and deleting comments. |
+| `assets/resize.js` | The drag handle on the left edge of the comment pane: pointer and keyboard, limits, and reporting the final width for saving. |
+| `assets/review.js` | The Submit review button and its panel (optional note); shows when a review can be submitted and posts it. |
 | `assets/drag.js` | Horizontal drag in the strip; works out where the slide would go, `main.js` performs the move. |
 | `assets/i18n.js`, `assets/locales/` | Message catalogs for the page. |
 | `assets/icons.js` | Inline SVG icons. |
@@ -76,6 +78,16 @@ The page talks to its own server only. Requests must come from the loopback host
 | `POST /api/history/undo`, `.../redo` | Undo and redo. |
 | `POST /api/open`, `/api/current`, `/api/refresh`, `/api/open-external` | Open a deck, change slide, render again, open in PowerPoint. |
 | `POST /api/language` | Switch the language. |
+| `POST /api/comments-width` | Save the width of the comment pane in pixels (`null` for the default). |
+| `POST /api/review/submit` | Send the review to the agent: `{ note? }`. Answers `409` when there is nothing new to submit, when the same marks were already submitted, or when the agent's session cannot be reached. |
+
+## Submitting a review
+
+A viewer is created with a `sendToAgent` function by the registry, which `extension.mjs` fills with `session.send({ prompt, displayPrompt })` (the session object that `joinSession` returned). The message is queued behind whatever the agent is doing, and the chat shows the short `displayPrompt` instead of the whole prompt.
+
+- `ViewerInstance.reviewInfo()` is what the page reads (`state.review`): the slides and new slides the agent has not read, and whether they were submitted already. A submission remembers the version of the marks (`deckKey:rev`); any change to the marks makes a new version, and reading them clears the unread flags, so the button comes back on only for new feedback.
+- The prompt names the deck and the canvas instance, lists what is new, carries the user's note, and tells the agent to call `get_annotations` and to ask before editing when a comment is unclear. It follows the current language, like the hook text.
+- The hook that adds the unread-marks note leaves this message alone, because the message already says where to read.
 
 ## Rewriting a deck
 
@@ -101,7 +113,7 @@ Everything is kept under `~/.copilot/extension-data/pptx-review-canvas/` (or `$C
 | `backups/` | The deck as it was before a rewrite: the last one per file, and at most the newest five overall. |
 | `undo/` | The deck as it was before a deletion, for undo. Cleaned when the history ends, and at start-up when older than a day. |
 | `work/` | Temporary render directories. |
-| `settings.json` | The chosen language. |
+| `settings.json` | The chosen language and the width of the comment pane. Each is saved only once the user chooses it. |
 
 Records are `{ format, version, data }` files written atomically. A record that cannot be read is renamed to `*.corrupt-<time>` instead of being overwritten.
 
