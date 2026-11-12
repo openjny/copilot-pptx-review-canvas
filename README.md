@@ -138,12 +138,6 @@ Hover between two slides in the strip and press **+** to add a new slide there. 
 | `new_deck` | Creates a one-slide `.pptx`, blank or from a template, and opens it. |
 | `refresh` | Renders the deck again. |
 
-## Language
-
-The canvas starts in English. Open the help panel (**?**) and choose **English** or **日本語**; the choice is saved and shared by all viewers. To set the initial language without opening the panel, set the environment variable `PPTX_CANVAS_LANG` to `en` or `ja`; a saved choice wins over it. The canvas name in the client's list follows the language at the time the extension starts.
-
-![The help panel with its language switch and keyboard shortcuts](./docs/images/help.png)
-
 ## Data and privacy
 
 Everything is stored under `~/.copilot/extension-data/pptx-review-canvas/`: rendered images, marks, comments, new slides, backups of files before a rewrite, and the last slide you looked at in each deck. Nothing leaves your PC.
