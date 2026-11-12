@@ -90,6 +90,9 @@ Start a new session afterwards: a canvas appears only in sessions that begin aft
 > [!NOTE]
 > The canvas id is `pptx-slide-viewer`. If you installed the same canvas from another source, uninstall it first so that it is not registered twice.
 
+> [!NOTE]
+> The extension registers one hook that runs when you send a message: if you have marks that the agent has not read yet, it adds a short hidden note saying so. Because hooks are a privileged capability, your Copilot client asks you to approve the extension the first time. The hook is in [`extension.mjs`](./com.github.copilot/extensions/pptx-slide-viewer/extension.mjs).
+
 ## Quick start
 
 1. Start a new Copilot session and ask: *"Open `samples/q3-review.pptx` in the PowerPoint viewer."* The first render takes a few seconds while PowerPoint starts.

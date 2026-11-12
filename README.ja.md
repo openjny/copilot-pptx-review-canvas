@@ -90,6 +90,9 @@ VS Code では、[VS Code にインストール](https://vscode.dev/redirect?url
 > [!NOTE]
 > キャンバスの ID は `pptx-slide-viewer` です。同じキャンバスを別の方法でインストールしている場合は、二重に登録されないよう、先にアンインストールしてください。
 
+> [!NOTE]
+> 拡張機能は、メッセージを送るときに動くフックを 1 つ登録します。エージェントがまだ読んでいない書き込みがあるときに、そのことを伝える短い非表示のメモを足すためのものです。フックは特権のある機能なので、初めて使うときに Copilot のクライアントから拡張機能の承認を求められます。フックの実装は [`extension.mjs`](./com.github.copilot/extensions/pptx-slide-viewer/extension.mjs) にあります。
+
 ## はじめかた
 
 1. 新しい Copilot セッションを始め、「`samples/q3-review.pptx` を PowerPoint ビューアで開いて」と頼みます。最初の描画は、PowerPoint の起動のため数秒かかります。

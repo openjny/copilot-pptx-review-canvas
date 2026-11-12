@@ -21,6 +21,17 @@ This runs every `*.test.mjs` file in [`com.github.copilot/extensions/pptx-slide-
 npm run smoke
 ```
 
+## Try your change
+
+Add your clone as a local marketplace and install from it. A local marketplace is loaded live, so edits take effect in the next session without reinstalling:
+
+```powershell
+copilot plugin marketplace add C:\path\to\copilot-pptx-canvas
+copilot plugin install copilot-pptx-canvas@copilot-pptx-canvas
+```
+
+Uninstall any other copy of the plugin first, so that the canvas is not registered twice. After changing `assets/` or `lib/`, start a new session; the page and the server read their files when the viewer starts.
+
 ## Where things live
 
 [docs/architecture.md](./docs/architecture.md) describes the modules, the HTTP API and the data the extension keeps. The extension itself is in `com.github.copilot/extensions/pptx-slide-viewer/`; the plugin manifest is `plugin.json` at the repository root.
