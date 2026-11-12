@@ -100,7 +100,9 @@ function boundedInteger(value, name, min, max, fallback) {
 
 const MARK_GUIDE = [
   'Each mark is a group of pen or highlighter strokes that touch each other. marks[].number is the black number printed next to that mark in the image.',
-  'comments[] are the notes the user wrote about a page. kind "page" is about the whole page (no position); "point" and "area" are tied to a place: boxPercent is where (x, y, and w, h for an area, in percent of the slide), and the image shows a blue number at it (and a blue rectangle for an area) that matches comments[].number. A comment is what the user wants, in their own words, so follow it like their chat message; if it contradicts their chat message or is unclear, ask before editing.',
+  'comments[] are the open comment threads of the page. kind "page" is about the whole page (no position); "point" and "area" are tied to a place: boxPercent is where (x, y, and w, h for an area, in percent of the slide), and the image shows a blue number at it (and a blue rectangle for an area) that matches comments[].number. A comment is what the user wants, in their own words, so follow it like their chat message; if it contradicts their chat message or is unclear, ask before editing.',
+  'comments[].author is "user" or "agent" (you). replies[] are the answers in the thread, oldest first, each with an author. A thread whose last reply is the user\'s is waiting for your answer: act on it, or answer with reply_to_comment. Threads the user resolved are left out; resolvedCommentCount says how many there are.',
+  'To tell the user something about a place in the deck (what you changed there, a question, a spot that needs their careful review), start a thread with add_comment (slide or draft, text, and anchor or shape); to answer in a thread call reply_to_comment with its id. What you write is not marked unread for you.',
   'onShapes lists the shapes under the mark or comment, most relevant first; their names are the paths of the deck build tree, so use them to find the source of the element. A shape with near: true is next to the mark rather than under it.',
   'The marks only say where the user pointed. What to change comes from the user\'s message and comments; if they disagree or are unclear, ask before editing.',
   'draftPages are ideas for NEW slides that exist only in the viewer, not in the file. insertAfterSlide says where each goes (0 = before the first slide); the strokes are a rough sketch of its layout or diagram, and an empty draft page means "put a slide here" with the content in the user\'s message or comments. The numbers in the draft titles are internal: the screen does not show them, so when you talk to the user, name a draft by where it goes (for example "the new slide after slide 3") and never by its number.',
@@ -129,7 +131,7 @@ function unreadMarksContext() {
 const pptxReviewCanvas = createCanvas({
   id: CANVAS_ID,
   displayName: t('app.title'),
-  description: 'Shows a PowerPoint (.pptx) deck as slide images with speaker notes, lets the user draw on slides and on new-slide drafts (or on a blank sketchbook with no file), reorder slides by drag and drop, create a new .pptx, and lets the agent read those marks (get_annotations), open decks and move between slides.',
+  description: 'Shows a PowerPoint (.pptx) deck as slide images with speaker notes, lets the user draw on slides and on new-slide drafts (or on a blank sketchbook with no file), comment and reply in threads, reorder slides by drag and drop, create a new .pptx, and lets the agent read those marks (get_annotations), leave comments and replies of its own (add_comment, reply_to_comment), open decks and move between slides.',
   inputSchema: {
     type: 'object',
     properties: {
@@ -214,8 +216,8 @@ const pptxReviewCanvas = createCanvas({
     },
     {
       name: 'get_annotations',
-      description: 'Read what the user drew and wrote: pen marks and comments on the slides and on new-slide drafts (ideas for slides that are not in the file yet); comments are about a whole page, a point or an area. Each page with marks or a point/area comment comes as an image with a number next to every mark (black) and comment (blue). '
-        + 'Call this first when the user gives feedback on the deck, refers to their marks or comments, or asks for new slides; then edit or build the deck as they instruct. Reading it clears the "unread" state.',
+      description: 'Read what the user drew and wrote: pen marks and comment threads on the slides and on new-slide drafts (ideas for slides that are not in the file yet); comments are about a whole page, a point or an area, and each has its replies. Each page with marks or a point/area comment comes as an image with a number next to every mark (black) and comment (blue). '
+        + 'Call this first when the user gives feedback on the deck, refers to their marks, comments or replies, or asks for new slides; then edit or build the deck as they instruct. Reading it clears the "unread" state.',
       inputSchema: {
         type: 'object',
         properties: {
@@ -249,6 +251,52 @@ const pptxReviewCanvas = createCanvas({
           })),
           resultType: 'success',
         };
+      }),
+    },
+    {
+      name: 'add_comment',
+      description: 'Start a comment thread of your own on a slide or a new-slide draft, to tell the user something about a place in the deck: what you changed there and whether it matches what they wanted, a question, or a spot that is weakly supported and needs their careful review. '
+        + 'Give anchor ({ x, y } for a point, or { x, y, w, h } for an area, in percent of the slide) or shape (a name from onShapes in get_annotations; slides only) to tie it to a place; give neither to comment on the whole page. The user sees it marked as yours, can reply, and can resolve it. It is not "unread" for you.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          slide: { ...slideProperty, description: 'The slide to comment on. Give slide or draft.' },
+          draft: { type: 'string', pattern: '^d[0-9a-f]{12}$', description: 'The new-slide draft to comment on (an id from draftPages). Give slide or draft.' },
+          text: { type: 'string', minLength: 1, maxLength: 2000, description: 'The comment.' },
+          anchor: {
+            type: 'object',
+            description: 'Where on the page, in percent of the slide: x and y of the point or the top-left corner, and w and h for an area.',
+            properties: { x: { type: 'number', minimum: 0, maximum: 100 }, y: { type: 'number', minimum: 0, maximum: 100 }, w: { type: 'number', minimum: 0, maximum: 100 }, h: { type: 'number', minimum: 0, maximum: 100 } },
+            required: ['x', 'y'],
+            additionalProperties: false,
+          },
+          shape: { type: 'string', description: 'The name of a shape on that slide, from onShapes in get_annotations; the comment is tied to the area the shape covers.' },
+        },
+        required: ['text'],
+        additionalProperties: false,
+      },
+      handler: (ctx) => guarded(async () => {
+        const input = asObject(ctx.input);
+        const instance = await readyViewer(ctx);
+        return instance.addAgentComment({ slide: optionalSlide(input.slide), draft: optionalDraft(input.draft), text: input.text, anchor: input.anchor, shape: input.shape });
+      }),
+    },
+    {
+      name: 'reply_to_comment',
+      description: 'Answer in a comment thread: say what you did about it, ask back, or explain why you did not. Use the id of the thread\'s first comment, from comments[].id in get_annotations or from add_comment. The reply is shown as yours and is not "unread" for you.',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          id: { type: 'string', pattern: '^c[0-9a-f]{12}$', description: 'The id of the comment thread.' },
+          text: { type: 'string', minLength: 1, maxLength: 2000, description: 'The reply.' },
+        },
+        required: ['id', 'text'],
+        additionalProperties: false,
+      },
+      handler: (ctx) => guarded(async () => {
+        const input = asObject(ctx.input);
+        const instance = await readyViewer(ctx);
+        return instance.replyAsAgent({ id: input.id, text: input.text });
       }),
     },
     {

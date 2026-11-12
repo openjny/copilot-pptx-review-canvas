@@ -176,9 +176,9 @@ export function analyzeSlide({ strokes, aspect, shapes, slideW, slideH, t = tEn 
 }
 
 /**
- * Turns the comments of one page into what the agent reads (number, text, kind, where it is, which shapes lie under it) and what the
- * image shows: a rectangle around each area comment and a numbered badge at each point or area. Comments about the whole page have
- * a number and a text but no position.
+ * Turns the comments of one page (the open threads) into what the agent reads (number, who wrote it, text, the replies, kind, where it
+ * is, which shapes lie under it) and what the image shows: a rectangle around each area comment and a numbered badge at each point or
+ * area. Comments about the whole page have a number and a text but no position.
  */
 export function analyzeComments({ comments, aspect, shapes, slideW, slideH, t = tEn }) {
   const rects = [];
@@ -186,7 +186,15 @@ export function analyzeComments({ comments, aspect, shapes, slideW, slideH, t = 
   const list = comments.map((comment, index) => {
     const number = index + 1;
     const kind = commentKind(comment);
-    const entry = { number, id: comment.id, kind, text: comment.text };
+    const replies = comment.replies ?? [];
+    const entry = {
+      number,
+      id: comment.id,
+      kind,
+      author: comment.author ?? 'user',
+      text: comment.text,
+      ...(replies.length ? { replies: replies.map((reply) => ({ author: reply.author ?? 'user', text: reply.text })) } : {}),
+    };
     if (!comment.anchor) return entry;
     const { x, y, w, h } = comment.anchor;
     const box = kind === 'point'

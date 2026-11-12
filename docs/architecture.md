@@ -46,18 +46,21 @@ All paths are inside `com.github.copilot/extensions/pptx-review-canvas/`.
 | `lib/pptx-delete.mjs` | Removes a slide from the list, sections and custom shows, then follows the relationships to remove only the parts that nothing else uses. |
 | `lib/history.mjs` | The linear undo and redo history of one viewer. Releases kept files when an entry falls out of the history. |
 | `lib/sketchbook.mjs` | Creates sketchbooks and renders their blank pages. |
-| `lib/comments.mjs` | Validates comments (trimmed text up to 2000 characters, anchors as fractions, tiny areas become points) and classifies them as `page`, `point` or `area`. |
+| `lib/comments.mjs` | Validates comments and replies (trimmed text up to 2000 characters, up to 50 replies, author `user` or `agent`, anchors as fractions, tiny areas become points) and classifies comments as `page`, `point` or `area`. |
 | `lib/annotations.mjs` | Validates, stores and carries over marks, comments and new slides. They follow a slide by the hash of its image, or by position. |
 | `lib/marks.mjs` | Groups strokes into marks and finds the shapes under a mark or comment. |
 | `lib/raster.mjs`, `lib/png.mjs` | Draws mark numbers (black) and comment rectangles and numbers (blue) onto PNGs, and writes blank pages. |
-| `lib/store.mjs` | Atomic record files, the data root, per-deck last position, and settings (the language and the width of the comments pane). |
+| `lib/store.mjs` | Atomic record files, the data root, per-deck last position, and settings (the language, the theme, the width of the comments pane and the height of the strip). |
 | `lib/i18n.mjs`, `lib/locales/` | Message catalogs for everything the server says, see [Languages](#languages). |
-| `assets/index.html`, `assets/styles.css` | Structure and look. The page policy is `style-src 'self'`, so there are no inline styles. |
-| `assets/main.js` | The page: the strip, the **+** buttons, new slides, keys, help, opening and creating decks. |
-| `assets/ink.js` | Drawing, the comment tool (click for a point, drag for an area), tools, undo and redo. |
-| `assets/comments.js` | The comment list, pins on the slide, and adding, editing and deleting comments. |
-| `assets/resize.js` | The drag handle on the left edge of the comment pane: pointer and keyboard, limits, and reporting the final width for saving. |
-| `assets/review.js` | The Submit review button and its panel (optional note); shows when a review can be submitted and posts it. |
+| `assets/index.html`, `assets/styles.css` | Structure and look. The page policy is `style-src 'self'`, so there are no inline styles. Colors come in a light and a dark set (`light-dark()`). |
+| `assets/main.js` | The page: the two-row bar, the strip, the **+** buttons, new slides, keys, help, the settings menu, opening and creating decks. |
+| `assets/ink.js` | Drawing, the comment tool (click for a point, drag for an area, right-click and right-drag with any tool), tools, undo and redo. |
+| `assets/shape.js` | Turns a freehand stroke into a straight line (`Shift`) or a rectangle (`Ctrl`) while it is drawn. |
+| `assets/comments.js` | Threads: the panel, the pins on the slide, the composer for the whole slide, replies, resolving, and the blinking of the place of a thread under the pointer. |
+| `assets/bubble.js`, `assets/place.js` | The bubble beside a spot on the slide, where a comment is written or a thread is read, and the placement rule that keeps it inside the slide and clear of the spot. |
+| `assets/menu.js` | The right-click menu of a slide in the strip: add after, move earlier or later, delete. |
+| `assets/resize.js` | The drag handles on the left edge of the comment pane and the top edge of the strip: pointer and keyboard, limits, and reporting the final size for saving. |
+| `assets/review.js` | The Submit review button: shows when a review can be submitted and what it will send, and posts it the moment it is pressed. |
 | `assets/drag.js` | Horizontal drag in the strip; works out where the slide would go, `main.js` performs the move. |
 | `assets/i18n.js`, `assets/locales/` | Message catalogs for the page. |
 | `assets/icons.js` | Inline SVG icons. |
@@ -70,7 +73,7 @@ The page talks to its own server only. Requests must come from the loopback host
 |:--|:--|
 | `GET /api/state`, `GET /api/events` | The state snapshot, and the stream of changes. |
 | `GET /api/annotations`, `POST /api/annotations/add`, `.../remove`, `.../clear` | Marks of a slide or a new slide. |
-| `GET /api/comments`, `POST /api/comments/add`, `.../update`, `.../remove` | Comments. |
+| `GET /api/comments`, `POST /api/comments/add`, `.../update`, `.../reply`, `.../resolve`, `.../remove` | Comment threads. The page writes as the user; the agent writes through its actions. |
 | `POST /api/drafts/add`, `.../move`, `.../remove` | New slides (drafts). |
 | `POST /api/sketchbook` | Start a sketchbook. |
 | `GET /api/new-deck/suggest`, `POST /api/new-deck` | Create a one-slide deck. |
@@ -78,15 +81,25 @@ The page talks to its own server only. Requests must come from the loopback host
 | `POST /api/history/undo`, `.../redo` | Undo and redo. |
 | `POST /api/open`, `/api/current`, `/api/refresh`, `/api/open-external` | Open a deck, change slide, render again, open in PowerPoint. |
 | `POST /api/language` | Switch the language. |
+| `POST /api/theme` | Save the theme: `auto`, `light` or `dark`. |
 | `POST /api/comments-width` | Save the width of the comment pane in pixels (`null` for the default). |
-| `POST /api/review/submit` | Send the review to the agent: `{ note? }`. Answers `409` when there is nothing new to submit, when the same marks were already submitted, or when the agent's session cannot be reached. |
+| `POST /api/rail-height` | Save the height of the strip in pixels (`null` for the default). |
+| `POST /api/review/submit` | Send the review to the agent (no body is needed). Answers `409` when there is nothing new to submit, when the same marks were already submitted, or when the agent's session cannot be reached. |
+
+## Comment threads
+
+A comment is `{ id, author, text, anchor, resolved, replies[] }` plus timestamps. `author` is `user` or `agent`, and each reply has an author too. The `add_comment` and `reply_to_comment` actions write as the agent; the page writes as the user. Only a user's own comment can be edited.
+
+- A comment, a reply or an edit by the user is new feedback for the agent. What the agent writes is not, and neither is resolving or reopening a thread.
+- Only the page resolves a thread. `get_annotations` leaves resolved threads out and reports how many there are, and the numbers on the images count open threads only, so they match the numbers on the screen.
+- Records saved by an earlier version have no author, replies or `resolved` flag; they are read as the user's, open, with no replies.
 
 ## Submitting a review
 
 A viewer is created with a `sendToAgent` function by the registry, which `extension.mjs` fills with `session.send({ prompt, displayPrompt })` (the session object that `joinSession` returned). The message is queued behind whatever the agent is doing, and the chat shows the short `displayPrompt` instead of the whole prompt.
 
 - `ViewerInstance.reviewInfo()` is what the page reads (`state.review`): the slides and new slides the agent has not read, and whether they were submitted already. A submission remembers the version of the marks (`deckKey:rev`); any change to the marks makes a new version, and reading them clears the unread flags, so the button comes back on only for new feedback.
-- The prompt names the deck and the canvas instance, lists what is new, carries the user's note, and tells the agent to call `get_annotations` and to ask before editing when a comment is unclear. It follows the current language, like the hook text.
+- The prompt names the deck and the canvas instance, lists what is new, and tells the agent to call `get_annotations` and to ask before editing when a comment is unclear. It carries no free text of the user: the marks and comments are the instructions, and the button sends at once, with no confirmation step. It follows the current language, like the hook text.
 - The hook that adds the unread-marks note leaves this message alone, because the message already says where to read.
 
 ## Rewriting a deck
@@ -113,7 +126,7 @@ Everything is kept under `~/.copilot/extension-data/pptx-review-canvas/` (or `$C
 | `backups/` | The deck as it was before a rewrite: the last one per file, and at most the newest five overall. |
 | `undo/` | The deck as it was before a deletion, for undo. Cleaned when the history ends, and at start-up when older than a day. |
 | `work/` | Temporary render directories. |
-| `settings.json` | The chosen language and the width of the comment pane. Each is saved only once the user chooses it. |
+| `settings.json` | The chosen language and theme, the width of the comment pane and the height of the strip. Each is saved only once the user chooses it. |
 
 Records are `{ format, version, data }` files written atomically. A record that cannot be read is renamed to `*.corrupt-<time>` instead of being overwritten.
 

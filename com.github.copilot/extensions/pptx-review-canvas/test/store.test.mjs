@@ -69,20 +69,20 @@ test('SettingsStore saves the language in the order it was asked and keeps an un
   const root = await makeTempDir();
   const logs = [];
   const store = new SettingsStore(root, { log: (message) => logs.push(message) });
-  assert.deepEqual(await store.load(), { language: null, commentsWidth: null });
+  assert.deepEqual(await store.load(), { language: null, commentsWidth: null, railHeight: null, theme: null });
 
   await Promise.all([store.save({ language: 'ja' }), store.save({ language: 'en-US' }), store.save({ language: 'ja-JP' })]);
-  assert.deepEqual(await store.load(), { language: 'ja', commentsWidth: null });
+  assert.deepEqual(await store.load(), { language: 'ja', commentsWidth: null, railHeight: null, theme: null });
   assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'settings.json'), 'utf8')).data, { language: 'ja' });
 
   await fs.writeFile(store.file, JSON.stringify({ format: 'pptx-review-canvas.settings', version: 1, data: { language: 'fr' } }));
-  assert.deepEqual(await store.load(), { language: null, commentsWidth: null });
+  assert.deepEqual(await store.load(), { language: null, commentsWidth: null, railHeight: null, theme: null });
   assert.equal(logs.length, 1);
   assert.deepEqual((await fs.readdir(root)).filter((name) => name.includes('.corrupt-')).length, 1);
   assert.equal(await fs.access(store.file).then(() => true, () => false), false, 'the next save starts from a clean file');
 });
 
-test('SettingsStore keeps the width of the comments pane beside the language, and ignores a width that makes no sense', async () => {
+test('SettingsStore keeps the sizes of the comments pane and the thumbnail strip and the theme beside the language, and ignores values that make no sense', async () => {
   const root = await makeTempDir();
   const store = new SettingsStore(root);
   const saved = async () => JSON.parse(await fs.readFile(store.file, 'utf8')).data;
@@ -91,7 +91,7 @@ test('SettingsStore keeps the width of the comments pane beside the language, an
   await store.save({ commentsWidth: 420 });
   assert.deepEqual(await saved(), { commentsWidth: 420 }, 'no language is written until the user chooses one');
   await store.save({ language: 'ja' });
-  assert.deepEqual(await new SettingsStore(root).load(), { language: 'ja', commentsWidth: 420 });
+  assert.deepEqual(await new SettingsStore(root).load(), { language: 'ja', commentsWidth: 420, railHeight: null, theme: null });
 
   await store.save({ commentsWidth: 99999 });
   await store.save({ commentsWidth: 'wide' });
@@ -99,6 +99,21 @@ test('SettingsStore keeps the width of the comments pane beside the language, an
   await store.save({ commentsWidth: null });
   assert.deepEqual(await saved(), { language: 'ja' }, 'null goes back to the default');
 
-  await fs.writeFile(store.file, JSON.stringify({ format: 'pptx-review-canvas.settings', version: 1, data: { language: 'en', commentsWidth: 5 } }));
-  assert.deepEqual(await new SettingsStore(root).load(), { language: 'en', commentsWidth: null }, 'a bad width does not cost the language');
+  await store.save({ railHeight: 150 });
+  assert.deepEqual(await saved(), { language: 'ja', railHeight: 150 });
+  await store.save({ railHeight: 5 });
+  await store.save({ railHeight: 'tall' });
+  assert.deepEqual(await saved(), { language: 'ja', railHeight: 150 }, 'a height out of range is not saved');
+  await store.save({ railHeight: null });
+  assert.deepEqual(await saved(), { language: 'ja' }, 'null goes back to the default');
+
+  await store.save({ theme: 'dark' });
+  assert.deepEqual(await saved(), { language: 'ja', theme: 'dark' });
+  await store.save({ theme: 'sepia' });
+  await store.save({ theme: null });
+  assert.deepEqual(await saved(), { language: 'ja', theme: 'dark' }, 'a theme that does not exist is not saved');
+  assert.deepEqual(await new SettingsStore(root).load(), { language: 'ja', commentsWidth: null, railHeight: null, theme: 'dark' });
+
+  await fs.writeFile(store.file, JSON.stringify({ format: 'pptx-review-canvas.settings', version: 1, data: { language: 'en', commentsWidth: 5, railHeight: 1, theme: 'neon' } }));
+  assert.deepEqual(await new SettingsStore(root).load(), { language: 'en', commentsWidth: null, railHeight: null, theme: null }, 'a bad size or theme does not cost the language');
 });

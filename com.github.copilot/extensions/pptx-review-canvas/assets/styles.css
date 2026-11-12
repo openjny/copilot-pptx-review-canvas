@@ -1,40 +1,29 @@
 :root {
+  /* light-dark() picks the first colour for a light page and the second for a dark one; the theme setting forces one of them. */
   color-scheme: light dark;
-  --bg: #f3f3f5;
-  --panel: #ffffff;
-  --text: #1b1b1f;
-  --muted: #5c5f66;
-  --line: #d3d3da;
-  --hover: #ececf1;
-  --accent: #0b6bcb;
-  --accent-soft: #e3effc;
+  --bg: light-dark(#f3f3f5, #1c1c1f);
+  --panel: light-dark(#ffffff, #26262a);
+  --text: light-dark(#1b1b1f, #ececf1);
+  --muted: light-dark(#5c5f66, #a3a6ae);
+  --line: light-dark(#d3d3da, #3b3b42);
+  --hover: light-dark(#ececf1, #34343a);
+  --accent: light-dark(#0b6bcb, #4aa3ff);
+  --accent-soft: light-dark(#e3effc, #1d3350);
   --comment: #1f6feb;
-  --accent-text: #ffffff;
-  --danger: #b3261e;
-  --danger-bg: #fdecea;
-  --notice-bg: #fff6d6;
-  --stage: #e3e3e9;
+  --agent: light-dark(#0b8a79, #3fc9b5);
+  --agent-soft: light-dark(#e1f4f1, #16342f);
+  --agent-text: light-dark(#ffffff, #06231f);
+  --accent-text: light-dark(#ffffff, #06223f);
+  --danger: light-dark(#b3261e, #ff8a80);
+  --danger-bg: light-dark(#fdecea, #3a1f1d);
+  --notice-bg: light-dark(#fff6d6, #3a3320);
+  --stage: light-dark(#e3e3e9, #141416);
   --shadow: 0 1px 3px rgb(0 0 0 / 0.25), 0 8px 24px rgb(0 0 0 / 0.14);
   --shadow-small: 0 1px 4px rgb(0 0 0 / 0.35);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #1c1c1f;
-    --panel: #26262a;
-    --text: #ececf1;
-    --muted: #a3a6ae;
-    --line: #3b3b42;
-    --hover: #34343a;
-    --accent: #4aa3ff;
-    --accent-soft: #1d3350;
-    --accent-text: #06223f;
-    --danger: #ff8a80;
-    --danger-bg: #3a1f1d;
-    --notice-bg: #3a3320;
-    --stage: #141416;
-  }
-}
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
 
 [hidden] { display: none !important; }
 
@@ -74,27 +63,29 @@ body {
   height: 100vh;
 }
 
-/* ---- top bar: one row with the title, the drawing tools and the file actions ------------------------------ */
+/* ---- top bar: two rows. The first has the file actions, the deck name, notes, settings and help; the second the drawing tools and, at its
+   right end, everything about the review (comments, submit) ------------------------------------------------------------------------- */
 
 .bar {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 12px;
-  padding: 5px 12px;
+  flex-direction: column;
+  gap: 3px;
+  padding: 5px 12px 6px;
   background: var(--panel);
   border-bottom: 1px solid var(--line);
 }
 
-.bar__heading { order: 1; flex: 1 1 140px; display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.bar__main { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.bar__heading { flex: 1 1 0; display: flex; align-items: center; gap: 8px; min-width: 0; }
+.bar__file { flex: none; display: flex; align-items: center; gap: 2px; }
+.bar__name { flex: 1 1 0; display: flex; align-items: baseline; gap: 10px; min-width: 0; }
 .bar__title { margin: 0; font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 0 1 auto; }
 .bar__meta { margin: 0; flex: 1 1 0; min-width: 0; color: var(--muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.ink { order: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
-.bar__actions { order: 3; display: flex; align-items: center; gap: 2px; margin-left: auto; }
-
-@media (max-width: 1040px) {
-  .ink { order: 4; flex: 1 0 100%; }
-}
+.bar__actions { flex: none; display: flex; align-items: center; gap: 2px; }
+/* The second row: the drawing tools, and at its right end everything about the review (comments, submit). */
+.bar__tools { display: flex; align-items: flex-start; gap: 8px; }
+.bar__review { flex: none; display: flex; align-items: center; gap: 2px; min-height: 34px; }
+.ink { flex: 1 1 0; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; min-height: 34px; }
 
 .ibtn {
   display: inline-grid;
@@ -163,11 +154,32 @@ body {
 }
 .help__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 6px; }
 .help__title { margin: 0; font-size: 14px; }
-.lang { display: inline-flex; flex: none; overflow: hidden; border: 1px solid var(--line); border-radius: 6px; }
-.lang__btn { padding: 1px 10px; font: inherit; font-size: 12px; color: inherit; background: transparent; border: 0; cursor: pointer; }
-.lang__btn + .lang__btn { border-left: 1px solid var(--line); }
-.lang__btn:hover { background: var(--hover); }
-.lang__btn[aria-pressed="true"] { font-weight: 600; color: var(--accent); background: var(--accent-soft); }
+.choice { display: inline-flex; flex: none; overflow: hidden; border: 1px solid var(--line); border-radius: 6px; }
+.choice__btn { padding: 1px 10px; font: inherit; font-size: 12px; color: inherit; background: transparent; border: 0; cursor: pointer; }
+.choice__btn + .choice__btn { border-left: 1px solid var(--line); }
+.choice__btn:hover { background: var(--hover); }
+.choice__btn[aria-pressed="true"] { font-weight: 600; color: var(--accent); background: var(--accent-soft); }
+
+/* ---- settings menu ----------------------------------------------------------------------------------------- */
+
+.menu {
+  position: absolute;
+  top: 44px;
+  right: 12px;
+  z-index: 30;
+  display: grid;
+  gap: 10px;
+  min-width: 260px;
+  padding: 12px 14px 14px;
+  font-size: 13px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+}
+.menu__title { margin: 0; font-size: 14px; }
+.menu__group { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.menu__label { color: var(--muted); }
 .help__list { display: grid; gap: 8px; margin: 0 0 10px; padding: 0; list-style: none; }
 .help__list strong { display: block; }
 .help__keys { display: grid; grid-template-columns: max-content 1fr; gap: 3px 12px; margin: 0; }
@@ -175,37 +187,16 @@ body {
 .help__keys dd { margin: 0; color: var(--muted); }
 kbd { padding: 0 5px; font: inherit; font-size: 12px; background: var(--hover); border: 1px solid var(--line); border-radius: 4px; }
 
-/* ---- submitting the review: the button at the right end of the bar, and the panel under it ----------------------- */
+/* ---- submitting the review: the button at the right end of the bar ------------------------------------------------ */
 
 .submit__btn { display: inline-flex; align-items: center; gap: 6px; margin-left: 10px; font-weight: 600; white-space: nowrap; }
 .submit__btn .icon { width: 16px; height: 16px; }
-.submit__btn[aria-expanded="true"] { box-shadow: 0 0 0 2px var(--accent-soft), 0 0 0 3px var(--accent); }
 /* "Submitted" is a state, not a disabled button, so it keeps its full colour. */
 .submit__btn.is-done:disabled { opacity: 1; color: var(--accent); background: var(--accent-soft); border-color: var(--accent); }
-.submit {
-  position: absolute;
-  top: 44px;
-  right: 12px;
-  z-index: 30;
-  display: grid;
-  gap: 8px;
-  width: min(400px, calc(100vw - 24px));
-  max-height: calc(100vh - 64px);
-  padding: 14px 16px;
-  overflow: auto;
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  box-shadow: var(--shadow);
+/* In a narrow window the button keeps only its icon (the text stays for screen readers), so that the second row does not wrap. */
+@media (max-width: 860px) {
+  .submit__text { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 }
-.submit__title { margin: 0; font-size: 14px; }
-.submit__lead { margin: 0; color: var(--muted); }
-.submit__summary { margin: 0; font-weight: 600; }
-.submit__summary:empty { display: none; }
-.submit__label { font-weight: 600; }
-.submit__note { display: block; width: 100%; min-height: 5em; padding: 6px 8px; font: inherit; color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; resize: vertical; }
-.submit__note:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 1px var(--accent); }
-.submit__actions { display: flex; justify-content: flex-end; gap: 8px; }
 
 /* ---- open / new panel -------------------------------------------------------------------------------------- */
 
@@ -267,7 +258,6 @@ kbd { padding: 0 5px; font: inherit; font-size: 12px; background: var(--hover); 
 .stage { grid-column: 1; grid-row: 1; }
 .notes { grid-column: 1; grid-row: 2; }
 .comments { grid-column: 2; grid-row: 1 / 3; }
-.rail { grid-column: 1 / -1; grid-row: 3; }
 
 .stage { position: relative; display: flex; align-items: center; justify-content: center; min-width: 0; min-height: 0; padding: 8px 12px; background: var(--stage); }
 .stage__figure { container-type: size; display: flex; align-items: center; justify-content: center; width: 100%; height: 100%; min-height: 0; margin: 0; }
@@ -315,14 +305,48 @@ body.is-resizing { cursor: col-resize; user-select: none; }
 .comments__title { margin: 0; font-size: 13px; font-weight: 600; }
 .comments__list { flex: 1 1 auto; display: grid; align-content: start; gap: 10px; min-height: 0; margin: 0; padding: 10px 12px; overflow-y: auto; list-style: none; }
 .comments__foot { padding: 8px 12px; border-top: 1px solid var(--line); }
-.comments__foot .btn { width: 100%; }
+.comments__add { display: flex; align-items: center; justify-content: center; gap: 6px; width: 100%; }
+.comments__add .icon { width: 16px; height: 16px; }
+/* The composer: a box for a comment about the whole slide that opens at the foot of the pane, under the list, so it is never scrolled out of
+   sight. The foot stands out from the list while it is open. */
+.comments__compose { display: grid; }
+.comments__foot:has(.comments__compose:not([hidden])) { border-top: 2px solid var(--comment); box-shadow: 0 -10px 16px -10px rgb(0 0 0 / 0.3); }
+.comments__compose .thread { border-color: var(--comment); box-shadow: 0 0 0 1px var(--comment); }
+.comments__compose .thread__text { max-height: 38vh; }
+.thread__title { font-size: 13px; font-weight: 600; }
 
-.comment { display: grid; gap: 6px; padding: 8px 10px 10px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; }
-.comment.is-selected { border-color: var(--comment); box-shadow: 0 0 0 1px var(--comment); }
-.comment__head { display: flex; align-items: center; gap: 8px; min-height: 24px; }
-.comment__num {
+/* The menu of a slide in the strip. */
+.ctx {
+  position: fixed;
+  z-index: 50;
+  display: grid;
+  min-width: 220px;
+  padding: 4px;
+  font-size: 13px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+.ctx__item { display: block; width: 100%; padding: 6px 10px; color: var(--text); font: inherit; text-align: left; background: transparent; border: 0; border-radius: 5px; cursor: pointer; }
+.ctx__item:hover:not([aria-disabled="true"]), .ctx__item:focus-visible { background: var(--hover); outline: none; }
+.ctx__item:focus-visible { box-shadow: inset 0 0 0 2px var(--accent); }
+.ctx__item[aria-disabled="true"] { opacity: 0.45; cursor: default; }
+.ctx__item--divided { margin-top: 5px; position: relative; }
+.ctx__item--divided::before { content: ""; position: absolute; top: -3px; left: 6px; right: 6px; height: 1px; background: var(--line); }
+.ctx__item--danger { color: var(--danger); }
+.ctx__item--danger:hover:not([aria-disabled="true"]), .ctx__item--danger:focus-visible { background: var(--danger-bg); }
+
+/* A comment thread: the comment, the replies under it, and a box to reply. It is drawn in the list, and in the bubble on the slide. */
+.thread { display: grid; gap: 8px; padding: 8px 10px 10px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; }
+.thread.is-selected { border-color: var(--comment); box-shadow: 0 0 0 1px var(--comment); }
+.thread--agent.is-selected { border-color: var(--agent); box-shadow: 0 0 0 1px var(--agent); }
+.thread.is-resolved { opacity: 0.78; }
+.thread__head { display: flex; align-items: center; gap: 8px; min-height: 26px; }
+.thread__num {
   display: inline-grid;
   place-items: center;
+  flex: none;
   min-width: 22px;
   height: 22px;
   padding: 0 5px;
@@ -332,29 +356,60 @@ body.is-resizing { cursor: col-resize; user-select: none; }
   background: var(--comment);
   border-radius: 11px;
 }
-.comment__kind { flex: 1 1 auto; color: var(--muted); font-size: 12px; }
-.comment__del { width: 26px; height: 26px; }
-.comment__del .icon { width: 15px; height: 15px; }
-.comment__text {
+.thread__num .icon { width: 14px; height: 14px; }
+.thread--new .thread__num { padding: 0; }
+.thread--agent .thread__num { background: var(--agent); }
+.thread.is-resolved .thread__num { background: transparent; color: var(--muted); }
+.who { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: 12px; white-space: nowrap; }
+.who .icon { width: 14px; height: 14px; }
+.who--agent { color: var(--agent); font-weight: 600; }
+.thread__spacer { flex: 1 1 auto; }
+.thread__btn { width: 26px; height: 26px; }
+.thread__btn .icon { width: 15px; height: 15px; }
+.thread__text, .thread__preview, .thread__input {
   display: block;
   width: 100%;
-  min-height: 4.6em;
+  margin: 0;
   padding: 6px 8px;
   font: inherit;
   color: var(--text);
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 6px;
-  resize: vertical;
 }
-.comment__text:focus { border-color: var(--comment); outline: none; box-shadow: 0 0 0 1px var(--comment); }
-.comment__actions { display: flex; gap: 8px; justify-content: flex-end; }
+textarea.thread__text { min-height: 4.6em; resize: vertical; }
+.thread__preview { border-color: transparent; background: transparent; padding: 0; white-space: pre-wrap; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden; }
+.thread__text:focus, .thread__input:focus { border-color: var(--comment); outline: none; box-shadow: 0 0 0 1px var(--comment); }
+.thread--agent .thread__text:focus, .thread--agent .thread__input:focus { border-color: var(--agent); box-shadow: 0 0 0 1px var(--agent); }
+p.thread__text { padding: 0; border: 0; background: transparent; white-space: pre-wrap; overflow-wrap: anywhere; }
+.thread__replies { display: grid; gap: 8px; margin: 0; padding: 0 0 0 10px; list-style: none; border-left: 2px solid var(--line); }
+.reply { display: grid; gap: 2px; }
+.reply--agent { border-left-color: var(--agent); }
+.reply p { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.thread__more { margin: 0; color: var(--muted); font-size: 12px; }
+.thread__reply { display: grid; grid-template-columns: 1fr auto; gap: 6px; align-items: end; }
+.thread__input { min-height: 2.4em; resize: vertical; }
+.thread__actions { display: flex; gap: 8px; justify-content: flex-end; }
+/* A thread in the pane is selected by a click, which opens its box for a reply. */
+.comments__list .thread:not(.thread--new) { cursor: pointer; }
+.comments__list .thread:not(.thread--new):hover:not(.is-selected) { border-color: var(--muted); }
+/* A thread of the agent is teal all through, its buttons too. */
+.thread--agent .btn:hover:not(:disabled) { border-color: var(--agent); }
+.thread--agent .btn--primary { color: var(--agent-text); background: var(--agent); border-color: var(--agent); }
+.thread--compact { cursor: pointer; }
+.thread--compact:hover { border-color: var(--muted); }
+.resolved { margin-top: 2px; }
+.resolved > summary { padding: 4px 2px; color: var(--muted); font-size: 12px; cursor: pointer; }
+.resolved__list { display: grid; gap: 8px; margin: 6px 0 0; padding: 0; list-style: none; }
 
 .comment-layer { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
 .cmark { position: absolute; pointer-events: none; }
 .cmark--area { border: 2px dashed var(--comment); background: rgb(31 111 235 / 0.08); }
 .cmark--area.is-selected { background: rgb(31 111 235 / 0.18); border-style: solid; }
-.cmark--pending, .cmark--pending .cmark__badge { opacity: 0.85; }
+.plus { display: grid; place-items: center; }
+.plus .icon { width: 14px; height: 14px; stroke-width: 2.2; }
+/* The "+" is the badge of a comment not yet written, so it has the size and the round shape of the numbered badges; only the padding for digits is dropped. */
+.cmark--pending .cmark__badge { padding: 0; }
 .cmark__badge {
   position: absolute;
   top: 0;
@@ -376,7 +431,81 @@ body.is-resizing { cursor: col-resize; user-select: none; }
   transform: translate(-50%, -50%);
   pointer-events: auto;
 }
+.cmark--agent .cmark__badge { background: var(--agent); }
+.cmark--agent.cmark--area { border-color: var(--agent); background: rgb(11 138 121 / 0.08); }
+.cmark--agent.cmark--area.is-selected { background: rgb(11 138 121 / 0.18); }
 .cmark.is-selected .cmark__badge { background: var(--accent); transform: translate(-50%, -50%) scale(1.15); }
+.cmark--agent.is-selected .cmark__badge { background: var(--agent); }
+/* A thread of the pane is pointed at: its place stands out, and a thread about the whole page shades the whole slide with hatching. */
+.cmark.is-hover .cmark__badge { transform: translate(-50%, -50%) scale(1.15); }
+.cmark--area.is-hover { background: rgb(31 111 235 / 0.18); border-style: solid; }
+.cmark--agent.cmark--area.is-hover { background: rgb(11 138 121 / 0.18); }
+.cmark--page {
+  inset: 0;
+  display: none;
+  border: 3px solid var(--comment);
+  background: repeating-linear-gradient(135deg, rgb(31 111 235 / 0.18) 0 5px, rgb(31 111 235 / 0.05) 5px 12px);
+}
+.cmark--agent.cmark--page {
+  border-color: var(--agent);
+  background: repeating-linear-gradient(135deg, rgb(11 138 121 / 0.2) 0 5px, rgb(11 138 121 / 0.06) 5px 12px);
+}
+.cmark--page.is-hover { display: block; }
+
+/* While a thread of the pane is pointed at, its place on the slide blinks, so that it can be found at a glance. */
+.cmark { --mark: 31 111 235; }
+.cmark--agent { --mark: 11 138 121; }
+@keyframes mark-ping {
+  0%, 100% { transform: translate(-50%, -50%) scale(1.15); box-shadow: 0 1px 4px rgb(0 0 0 / 0.35), 0 0 0 0 rgb(var(--mark) / 0.8); }
+  50% { transform: translate(-50%, -50%) scale(1.45); box-shadow: 0 1px 4px rgb(0 0 0 / 0.35), 0 0 0 10px rgb(var(--mark) / 0); }
+}
+@keyframes mark-blink {
+  0%, 100% { background-color: rgb(var(--mark) / 0.14); box-shadow: 0 0 0 0 rgb(var(--mark) / 0.6); }
+  50% { background-color: rgb(var(--mark) / 0.45); box-shadow: 0 0 0 7px rgb(var(--mark) / 0); }
+}
+@keyframes page-blink {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .cmark.is-hover .cmark__badge { animation: mark-ping 1s ease-in-out infinite; }
+  .cmark--area.is-hover { animation: mark-blink 1s ease-in-out infinite; }
+  .cmark--page.is-hover { animation: page-blink 1s ease-in-out infinite; }
+}
+
+/* The bubble beside a spot on the slide: a new comment is written in it, and a thread is read, answered and changed in it. Its tail is a
+   turned square set by data-side and --tail. */
+.bubble {
+  position: absolute;
+  z-index: 25;
+  display: flex;
+  flex-direction: column;
+  width: min(320px, calc(100% - 16px));
+  max-height: calc(100% - 16px);
+  padding: 8px;
+  background: var(--panel);
+  border: 1px solid var(--comment);
+  border-radius: 10px;
+  box-shadow: var(--shadow);
+}
+.bubble[data-author="agent"] { border-color: var(--agent); }
+.bubble__body { display: grid; gap: 6px; min-height: 0; overflow-y: auto; }
+.bubble__body:focus { outline: none; }
+.bubble .thread { padding: 0; background: transparent; border: 0; box-shadow: none; }
+.bubble::before {
+  content: "";
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  background: var(--panel);
+  border: 1px solid var(--comment);
+  transform: rotate(45deg);
+}
+.bubble[data-author="agent"]::before { border-color: var(--agent); }
+.bubble[data-side="right"]::before { left: -7px; top: calc(var(--tail, 24px) - 6px); border-right: 0; border-top: 0; }
+.bubble[data-side="left"]::before { right: -7px; top: calc(var(--tail, 24px) - 6px); border-left: 0; border-bottom: 0; }
+.bubble[data-side="below"]::before { top: -7px; left: calc(var(--tail, 24px) - 6px); border-right: 0; border-bottom: 0; }
+.bubble[data-side="above"]::before { bottom: -7px; left: calc(var(--tail, 24px) - 6px); border-left: 0; border-top: 0; }
 
 .ibtn--count { position: relative; }
 .ibtn__count {
@@ -394,13 +523,24 @@ body.is-resizing { cursor: col-resize; user-select: none; }
   border-radius: 8px;
 }
 
+/* The strip of thumbnails. Its height is the user's to change: --rail-height is the height of the row of thumbnails (set from the page when
+   the top edge is dragged), and the width of a thumbnail follows from it and from the shape of the slides (--aspect). The row is 24px
+   taller than the picture (padding and border), and a thumbnail is 4px wider (border). It never takes more than 45% of the window. */
+.railbox { position: relative; grid-column: 1 / -1; grid-row: 3; min-width: 0; }
 .rail {
-  --thumb-w: 136px;
+  --rail-h: min(var(--rail-height, 98px), 45vh);
+  --thumb-w: calc((var(--rail-h) - 24px) * var(--aspect, 1.7778) + 4px);
   overflow-x: auto;
   overflow-y: hidden;
   background: var(--panel);
   border-top: 1px solid var(--line);
 }
+/* The edge that the user drags, a little taller than the line it sits on, so it is easy to catch. */
+.rail__resize { position: absolute; top: -4px; left: 0; right: 0; z-index: 6; height: 9px; cursor: row-resize; touch-action: none; }
+.rail__resize::after { content: ""; position: absolute; left: 0; right: 0; top: 3px; height: 3px; background: transparent; border-radius: 2px; }
+.rail__resize:hover::after, .rail__resize:focus-visible::after, .rail__resize.is-dragging::after { background: var(--accent); }
+.rail__resize:focus-visible { outline: none; }
+body.is-resizing-y { cursor: row-resize; user-select: none; }
 .thumbs {
   position: relative;
   display: flex;
@@ -516,31 +656,6 @@ body.is-resizing { cursor: col-resize; user-select: none; }
   border-radius: 10px;
 }
 
-.thumb__x {
-  position: absolute;
-  top: 5px;
-  left: 5px;
-  z-index: 3;
-  display: grid;
-  place-items: center;
-  min-width: 22px;
-  height: 22px;
-  padding: 0 6px;
-  font: inherit;
-  font-size: 11px;
-  color: #fff;
-  background: rgb(0 0 0 / 0.7);
-  border: 0;
-  border-radius: 11px;
-  cursor: pointer;
-  opacity: 0;
-}
-.thumb__x .icon { width: 12px; height: 12px; stroke-width: 2.6; }
-.thumb__x--slide { display: none; }
-.thumbs[data-removable="true"] .thumb__x--slide { display: grid; }
-.page:hover .thumb__x, .page:focus-within .thumb__x { opacity: 1; }
-body.is-reordering .thumb__x { opacity: 0; }
-
 /* A "+" shows when the pointer rests on the space between two thumbnails: that is where a new slide goes. */
 .gap {
   position: absolute;
@@ -609,5 +724,15 @@ body.is-reordering, body.is-reordering * { cursor: grabbing !important; user-sel
   .ibtn, .btn, .add-tile { transition: background-color 0.12s ease, border-color 0.12s ease, color 0.12s ease; }
   .gap::before { transition: opacity 0.12s ease; }
   .gap__plus { transition: opacity 0.12s ease, transform 0.12s ease; }
-  .thumb__x { transition: opacity 0.12s ease; }
+  .comments__compose:not([hidden]) { animation: compose-in 0.18s ease-out; }
+  .ctx:not([hidden]) { animation: ctx-in 0.1s ease-out; }
+}
+
+@keyframes compose-in {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes ctx-in {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: none; }
 }

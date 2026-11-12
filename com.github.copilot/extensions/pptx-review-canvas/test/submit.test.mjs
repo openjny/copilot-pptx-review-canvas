@@ -52,7 +52,6 @@ test('the review can be submitted once for what the agent has not read, and agai
     assert.match(sent[0].prompt, /Slides 2/);
     assert.match(sent[0].prompt, /get_annotations/);
     assert.match(sent[0].displayPrompt, /^Review submitted: review\.pptx \(Slides 2\)$/);
-    assert.doesNotMatch(sent[0].prompt, /overall instructions/, 'without a note the message has no note');
 
     assert.deepEqual((await state()).review, { canSubmit: false, submitted: true, slides: [2], drafts: 0 });
     assert.equal(json(await submit()).error.code, 'already_submitted');
@@ -68,31 +67,16 @@ test('the review can be submitted once for what the agent has not read, and agai
   }
 });
 
-test('the note goes to the agent as it was written, trimmed, and new slides count as feedback', async () => {
+test('new slides count as feedback, and the message to the agent carries no free text', async () => {
   const { registry, sent, state, submit } = await setup();
   try {
     await postJson(`${(await registry.ensure('panel-1')).url}api/drafts/add`, { after: 1 });
     assert.deepEqual((await state()).review, { canSubmit: true, submitted: false, slides: [], drafts: 1 });
 
-    assert.equal((await submit({ note: '  Keep the layout; only fix the wording.  ' })).status, 200);
-    assert.match(sent[0].prompt, /My overall instructions: Keep the layout; only fix the wording\.\n/);
+    assert.equal((await submit()).status, 200);
     assert.match(sent[0].prompt, /New slides: 1/);
-    assert.match(sent[0].displayPrompt, /\(New slides: 1\)\nKeep the layout; only fix the wording\.$/);
-  } finally {
-    await registry.closeAll();
-  }
-});
-
-test('a note that is not text, or is too long, is refused without sending anything', async () => {
-  const { registry, instance, sent, submit } = await setup();
-  try {
-    instance.addStroke(1, ring('a', 0.5, 0.5));
-    assert.equal((await submit({ note: 5 })).status, 400);
-    const tooLong = await submit({ note: 'x'.repeat(2001) });
-    assert.equal(tooLong.status, 400);
-    assert.match(json(tooLong).error.message, /2000/);
-    assert.equal(sent.length, 0);
-    assert.equal((await submit({ note: 'x'.repeat(2000) })).status, 200, 'exactly the limit is fine');
+    assert.match(sent[0].displayPrompt, /\(New slides: 1\)$/);
+    assert.doesNotMatch(sent[0].prompt, /instructions:/, 'the message carries no free text of the user');
   } finally {
     await registry.closeAll();
   }
@@ -102,10 +86,9 @@ test('the message follows the language that is current', async () => {
   const { registry, instance, sent, submit } = await setup({ language: 'ja' });
   try {
     instance.addStroke(2, ring('a', 0.3, 0.3));
-    assert.equal((await submit({ note: '文言だけ直してください。' })).status, 200);
+    assert.equal((await submit()).status, 200);
     assert.match(sent[0].prompt, /「review\.pptx」のレビューを終えたので、提出します/);
-    assert.match(sent[0].prompt, /全体への指示: 文言だけ直してください。/);
-    assert.match(sent[0].displayPrompt, /^レビューを提出しました: review\.pptx（スライド 2）\n文言だけ直してください。$/);
+    assert.match(sent[0].displayPrompt, /^レビューを提出しました: review\.pptx（スライド 2）$/);
   } finally {
     await registry.closeAll();
   }
@@ -137,6 +120,34 @@ test('without a session to send to, or when sending fails, nothing is marked as 
     assert.equal(sent.length, 1);
   } finally {
     await flaky.registry.closeAll();
+  }
+});
+
+test('the height of the thumbnail strip is saved for every viewer and survives a restart', async () => {
+  const { registry, instance, state, dataRoot } = await setup();
+  try {
+    assert.equal((await state()).railHeight, null);
+    assert.deepEqual(json(await postJson(`${instance.url}api/rail-height`, { height: 160 })), { height: 160 });
+    assert.equal((await state()).railHeight, 160);
+    const other = await registry.ensure('panel-2');
+    assert.equal(json(await request(`${other.url}api/state`)).railHeight, 160, 'another viewer of the same session sees it');
+
+    const restarted = new ViewerRegistry({ root: dataRoot, renderer: fakeRenderer(), watchIntervalMs: 0, env: {} });
+    const again = await restarted.ensure('panel-1');
+    try {
+      assert.equal(json(await request(`${again.url}api/state`)).railHeight, 160);
+    } finally {
+      await restarted.closeAll();
+    }
+
+    for (const height of [10, 5000, 120.5, 'tall', true]) {
+      assert.equal((await postJson(`${instance.url}api/rail-height`, { height })).status, 400, `height ${JSON.stringify(height)}`);
+    }
+    assert.equal((await state()).railHeight, 160, 'a refused height changes nothing');
+    assert.deepEqual(json(await postJson(`${instance.url}api/rail-height`, { height: null })), { height: null });
+    assert.equal((await state()).railHeight, null, 'null goes back to the default');
+  } finally {
+    await registry.closeAll();
   }
 });
 

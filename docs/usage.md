@@ -6,33 +6,43 @@ Press **?** in the viewer for the in-app help with the same shortcuts.
 
 ## Tools and shortcuts
 
-The toolbar has the pen, highlighter and eraser, five colors, three widths, and undo and redo.
+The toolbar has the comment tool, pen, highlighter and eraser, five colors, three widths, and undo and redo.
 
 | Tool | Key | What it does |
 |:--|:--|:--|
-| Comment | `C` | Click for a point, drag for an area. A comment on the whole slide is added from the comment list. |
-| Pen | `P` | Draws on the slide. |
-| Highlighter | `H` | Draws a wide, translucent stroke. |
+| Comment | `C` | Click for a point, drag for an area, then write in the bubble. See [Comments and threads](#comments-and-threads). |
+| Pen | `P` | Draws on the slide. Hold `Shift` for a straight line, `Ctrl` for a rectangle. |
+| Highlighter | `H` | Draws a wide, translucent stroke. `Shift` and `Ctrl` work as for the pen. |
 | Eraser | `E` | Removes strokes. |
+| Right-click | | With any tool: comment on that spot. Drag with the right button to comment on an area. |
 | Undo and redo | `Ctrl+Z` `Ctrl+Y` | Undoes marks, comment deletions and slide deletions, latest first. |
 | Show or hide marks | `M` | |
 | Notes | `N` | Shows the speaker notes. |
 | Previous and next slide | `←` `→` | |
 | Move the current slide | `Alt+←` `Alt+→` | Rewrites the `.pptx`; a backup is kept. |
 | New slide after the current one | `Ctrl+M` | |
-| Delete the current slide | `Delete` | Undo with `Ctrl+Z`. |
 
 Clicking the active tool turns it off.
 
-## Comment panel
+## Comments and threads
 
-Drag the left edge of the comment panel to change its width. Double-click the edge to reset it. With the edge focused, `←` `→` change the width (hold `Shift` for bigger steps). The width is remembered.
+Click a spot with the comment tool, drag an area, or right-click (and right-drag) with any tool. A bubble opens beside the spot: write the comment and press **Add** (`Ctrl+Enter`), or `Esc` to give up. To comment on the whole slide, open the comments panel with the button at the top right and press **Add a comment on the whole slide** at its foot.
+
+Each comment is a thread:
+
+- A numbered marker on the slide stands for an open thread. Click it to read the thread in a bubble.
+- The panel lists every thread of the slide. Click one to select it. Your own comment is edited right in its text. The trash icon deletes it (undo with `Ctrl+Z`).
+- The agent can start threads of its own and reply to yours. Its threads and replies are marked **Agent** and drawn in teal. When the agent started a thread or has answered in it, selecting the thread opens a box to reply.
+- Press the check icon to **resolve** a thread that is settled. Resolved threads are folded under **Resolved** in the panel, and you can reopen them.
+- While you point at a thread in the panel, its place on the slide blinks. A thread about the whole slide shades the whole slide.
+
+Drag the left edge of the panel to change its width. Double-click the edge to reset it. With the edge focused, `←` `→` change the width (hold `Shift` for bigger steps). The width is remembered.
 
 ![Dragging the edge of the comment panel to make it wider](./images/resize.png)
 
 ## Submit your review
 
-Press **Submit review** at the top right. A panel opens with an optional note for anything the marks do not say; `Ctrl+Enter` submits. The button works when the agent has something new to read. What happens next is in [How it works](./how-it-works.md#from-marks-to-changes).
+Press **Submit review** at the top right. It is sent to the agent at once, with no confirmation or note: the marks and comments are the instructions, so write anything the marks do not say as a comment. The button works when the agent has something new to read, and its tooltip says what will be sent. What happens next is in [How it works](./how-it-works.md#from-marks-to-changes).
 
 ## New slides and sketchbooks
 
@@ -42,7 +52,11 @@ No deck yet? Use **Open a deck** in the top bar, then **Start a sketchbook**, or
 
 ## Reorder and delete
 
-Drag slides in the strip to reorder them, or delete one with `Delete` or the **×** that appears on its thumbnail. Only the slide list inside the `.pptx` is rewritten, so nothing is re-saved by PowerPoint, and the previous file is kept as a backup.
+Drag slides in the strip to reorder them. To add a slide after one, move it earlier or later, or delete it, right-click the slide. Deleting happens at once, so it is only in this menu (there is no `Delete` key), and `Ctrl+Z` brings the slide back. Only the slide list inside the `.pptx` is rewritten, so nothing is re-saved by PowerPoint, and the previous file is kept as a backup.
+
+![The right-click menu of a slide, with Delete in red](./images/menu.png)
+
+Drag the top edge of the strip to change its height. Double-click the edge to reset it. The height is remembered.
 
 > [!TIP]
 > Reordering and deleting rewrite the `.pptx`, so close the deck in PowerPoint first. If the deck is generated by a script, change the script too, or the next build brings the old order back.
@@ -53,6 +67,12 @@ Drag slides in the strip to reorder them, or delete one with `Delete` or the **�
 
 ![Speaker notes shown under the slide](./images/notes.png)
 
+## Settings
+
+The **...** button at the top right opens the settings: the theme (**Auto** follows your system, or choose **Light** or **Dark**) and the language. Both are saved and shared by all viewers.
+
+![The settings menu over the dark theme](./images/dark.png)
+
 ## Actions for the agent
 
 | Action | What it does |
@@ -61,7 +81,9 @@ Drag slides in the strip to reorder them, or delete one with `Delete` or the **�
 | `go_to_slide` | Shows a slide. |
 | `get_slide` | Reads a slide's title and notes, optionally with its image. |
 | `get_outline` | Reads every title with the count of marks and comments, and the new slides. |
-| `get_annotations` | Reads marks and comments as data, with numbered images. Marks them as read. |
+| `get_annotations` | Reads marks and comment threads as data, with numbered images. Marks them as read. |
+| `add_comment` | Starts a thread of the agent's own on a point, an area, a shape or the whole slide. |
+| `reply_to_comment` | Answers in a thread. |
 | `resolve_drafts` | Removes new slides that the agent has turned into real slides. |
 | `new_sketchbook` | Starts, or continues, a sketchbook. |
 | `move_slide` | Moves a slide (rewrites the file). |
@@ -70,4 +92,4 @@ Drag slides in the strip to reorder them, or delete one with `Delete` or the **�
 
 ## Language
 
-The canvas starts in English. Open the help (**?**) and choose English or 日本語. The choice is saved and shared by all viewers. To set the first language without opening the page, set the environment variable `PPTX_CANVAS_LANG` to `en` or `ja`; a saved choice takes precedence. The canvas name in the client's list follows the language when the extension starts.
+The canvas starts in English. Choose English or 日本語 in the settings. The choice is saved and shared by all viewers. To set the first language without opening the page, set the environment variable `PPTX_CANVAS_LANG` to `en` or `ja`; a saved choice takes precedence. The canvas name in the client's list follows the language when the extension starts.

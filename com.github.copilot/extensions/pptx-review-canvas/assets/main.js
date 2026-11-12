@@ -3,7 +3,8 @@ import { createDrag } from './drag.js';
 import { icon, mountIcons } from './icons.js';
 import { applyTranslations, getLanguage, normalizeLanguage, setLanguage, t, tn } from './i18n.js';
 import { createInk } from './ink.js';
-import { createResize } from './resize.js';
+import { createMenu } from './menu.js';
+import { COMMENTS_WIDTH, RAIL_HEIGHT, createResize } from './resize.js';
 import { createReview } from './review.js';
 
 const $ = (id) => document.getElementById(id);
@@ -19,7 +20,10 @@ const el = {
   openButton: $('btn-open'),
   helpButton: $('btn-help'),
   help: $('help'),
-  langButtons: [...document.querySelectorAll('.lang__btn[data-lang]')],
+  langButtons: [...document.querySelectorAll('.choice__btn[data-lang]')],
+  themeButtons: [...document.querySelectorAll('.choice__btn[data-theme]')],
+  settingsButton: $('btn-settings'),
+  settingsMenu: $('settings-menu'),
   openPanel: $('open-panel'),
   openForm: $('open-form'),
   openPath: $('open-path'),
@@ -41,6 +45,8 @@ const el = {
   live: $('slide-live'),
   layout: $('layout'),
   rail: $('rail'),
+  railResize: $('rail-resize'),
+  pageMenu: $('page-menu'),
   thumbs: $('thumbs'),
   stage: $('stage'),
   box: $('slide-box'),
@@ -54,18 +60,18 @@ const el = {
   commentsTitle: $('comments-title'),
   commentsClose: $('comments-close'),
   commentsAdd: $('comments-add'),
+  commentsCompose: $('comments-compose'),
   commentsToggle: $('btn-comments'),
   commentsCount: $('comments-count'),
   commentsResize: $('comments-resize'),
   commentLayer: $('comment-layer'),
+  bubble: {
+    root: $('comment-bubble'),
+    body: $('bubble-body'),
+  },
   submitButton: $('btn-submit'),
   submitIcon: $('btn-submit-icon'),
   submitLabel: $('btn-submit-label'),
-  submitPanel: $('submit-panel'),
-  submitSummary: $('submit-summary'),
-  submitNote: $('submit-note'),
-  submitCancel: $('submit-cancel'),
-  submitSend: $('submit-send'),
 };
 
 let state = null;
@@ -155,9 +161,13 @@ const comments = createComments({
     title: el.commentsTitle,
     close: el.commentsClose,
     add: el.commentsAdd,
+    compose: el.commentsCompose,
     layer: el.commentLayer,
     toggle: el.commentsToggle,
     count: el.commentsCount,
+    stage: el.stage,
+    box: el.box,
+    bubble: el.bubble,
   },
   getState: () => state,
   getJson,
@@ -172,32 +182,37 @@ const review = createReview({
     button: el.submitButton,
     buttonIcon: el.submitIcon,
     buttonLabel: el.submitLabel,
-    panel: el.submitPanel,
-    summary: el.submitSummary,
-    note: el.submitNote,
-    cancel: el.submitCancel,
-    send: el.submitSend,
   },
   getState: () => state,
   post,
   onError: reportError,
   announce: say,
-  onOpen: () => setHelp(false),
 });
 
-// The width the user chose for the comments pane is saved by the server (the address of this page changes every time, so the browser
-// could not keep it). It is read from the first state only; later changes come from this page's own dragging.
+// The width the user chose for the comments pane and the height of the strip of thumbnails are saved by the server (the address of this
+// page changes every time, so the browser could not keep them). They are read from the first state only; later changes come from this
+// page's own dragging.
 const commentsResize = createResize({
   handle: el.commentsResize,
   layout: el.layout,
+  limits: COMMENTS_WIDTH,
   onCommit: (width) => post('api/comments-width', { width }).catch(reportError),
 });
-let commentsWidthAdopted = false;
+const railResize = createResize({
+  handle: el.railResize,
+  layout: el.layout,
+  limits: RAIL_HEIGHT,
+  variable: '--rail-height',
+  axis: 'y',
+  onCommit: (height) => post('api/rail-height', { height }).catch(reportError),
+});
+let sizesAdopted = false;
 
-function adoptCommentsWidth(width) {
-  if (commentsWidthAdopted) return;
-  commentsWidthAdopted = true;
-  if (Number.isInteger(width)) commentsResize.set(width);
+function adoptSizes({ commentsWidth, railHeight }) {
+  if (sizesAdopted) return;
+  sizesAdopted = true;
+  if (Number.isInteger(commentsWidth)) commentsResize.set(commentsWidth);
+  if (Number.isInteger(railHeight)) railResize.set(railHeight);
 }
 
 function applyState(next) {
@@ -206,8 +221,22 @@ function applyState(next) {
   state = { ...next, current: navigating ? state.current : next.current, draft: navigating ? state.draft : next.draft };
   if (next.phase !== 'error') localError = null;
   adoptLanguage(next.language);
-  adoptCommentsWidth(next.commentsWidth);
+  adoptTheme(next.theme);
+  adoptSizes(next);
   render();
+}
+
+/** Applies the colour theme: 'light' or 'dark' force one; anything else ('auto') leaves the choice to the system. */
+function adoptTheme(value) {
+  const theme = value === 'light' || value === 'dark' ? value : 'auto';
+  if (theme === 'auto') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.dataset.theme = theme;
+  for (const button of el.themeButtons) button.setAttribute('aria-pressed', String(button.dataset.theme === theme));
+}
+
+function chooseTheme(theme) {
+  if (!theme) return;
+  post('api/theme', { theme }).then((result) => adoptTheme(result?.theme ?? theme)).catch(reportError);
 }
 
 /** Switches the page to `value` ('en' or 'ja') when it is a supported language other than the current one. The render that follows redraws the rest. */
@@ -368,14 +397,7 @@ function slideItem(deck, slide) {
   number.className = 'thumb__n';
   number.textContent = String(slide.n);
   button.append(image, number);
-  const remove = document.createElement('button');
-  remove.type = 'button';
-  remove.className = 'thumb__x thumb__x--slide';
-  remove.dataset.n = String(slide.n);
-  remove.title = t('slide.delete');
-  remove.setAttribute('aria-label', t('slide.deleteN', { n: slide.n }));
-  remove.innerHTML = icon('close');
-  item.append(button, remove, gapButton({ after: slide.n }, t('slide.addAfter', { n: slide.n })));
+  item.append(button, gapButton({ after: slide.n }, t('slide.addAfter', { n: slide.n })));
   return item;
 }
 
@@ -400,14 +422,7 @@ function draftItem(draft) {
   tag.className = 'thumb__n thumb__n--new';
   tag.textContent = t('draft.tag');
   button.append(page, tag);
-  const remove = document.createElement('button');
-  remove.type = 'button';
-  remove.className = 'thumb__x';
-  remove.dataset.draft = draft.id;
-  remove.title = t('draft.delete');
-  remove.setAttribute('aria-label', draft.after > 0 ? t('draft.deleteAfter', { n: draft.after }) : t('draft.deleteStart'));
-  remove.innerHTML = icon('close');
-  item.append(button, remove, gapButton({ afterDraft: draft.id }, draft.after > 0 ? t('draft.addAfter', { n: draft.after }) : t('draft.addStart')));
+  item.append(button, gapButton({ afterDraft: draft.id }, draft.after > 0 ? t('draft.addAfter', { n: draft.after }) : t('draft.addStart')));
   return item;
 }
 
@@ -437,7 +452,6 @@ function renderThumbs() {
   const { deck } = state;
   const addable = canEditPages();
   el.thumbs.dataset.reorderable = String(canMove());
-  el.thumbs.dataset.removable = String(canRemoveSlides());
   el.thumbs.dataset.addable = String(addable);
   el.thumbs.classList.toggle('is-busy', moving);
   const key = deck ? `${deck.key}:${deck.renderedAt}` : null;
@@ -445,6 +459,7 @@ function renderThumbs() {
     thumbsKey = key;
     draftsKey = null;
     lastActive = null;
+    pageMenu.close({ restore: false });
     el.thumbs.replaceChildren();
     if (deck) buildStrip(deck);
   }
@@ -715,7 +730,7 @@ function addSlideAfterCurrent() {
   addSlide(state.draft ? { afterDraft: state.draft } : { after: state.current });
 }
 
-/** Deleting a new slide happens at once; Ctrl+Z (the undo button) brings it back. */
+/** Deleting a new slide happens at once; Ctrl+Z (the undo button) brings it back. It is asked for from the menu of the slide in the strip. */
 function requestRemoveDraft(id) {
   if (!state?.annotations?.drafts?.some((entry) => entry.id === id) || !canEditPages()) return;
   localError = null;
@@ -831,10 +846,58 @@ function toggleNotes() {
 }
 
 function setHelp(open) {
-  if (open) review.close();
+  if (open) setSettings(false);
   el.help.hidden = !open;
   el.helpButton.setAttribute('aria-expanded', String(open));
 }
+
+function setSettings(open) {
+  if (open) setHelp(false);
+  el.settingsMenu.hidden = !open;
+  el.settingsButton.setAttribute('aria-expanded', String(open));
+}
+
+const pageMenu = createMenu({ root: el.pageMenu });
+
+/** The entries of the menu of a slide in the strip (`item` is its `li.page`). A slide that cannot be moved or deleted now still shows them, dimmed. */
+function pageMenuEntries(item) {
+  const pages = pageList();
+  const draft = item.dataset.kind === 'draft' ? item.dataset.draft : null;
+  if (draft) {
+    const index = pages.findIndex((page) => page.draft === draft);
+    return [
+      { label: t('menu.addAfter'), disabled: !canEditPages(), onSelect: () => addSlide({ afterDraft: draft }) },
+      { label: t('menu.moveEarlier'), disabled: !canEditPages() || index <= 0, onSelect: () => moveDraftTo(draft, index - 1) },
+      { label: t('menu.moveLater'), disabled: !canEditPages() || index < 0 || index >= pages.length - 1, onSelect: () => moveDraftTo(draft, index + 1) },
+      { label: t('menu.deleteDraft'), danger: true, divider: true, disabled: !canEditPages(), onSelect: () => requestRemoveDraft(draft) },
+    ];
+  }
+  const n = Number(item.dataset.n);
+  const count = state?.deck?.slideCount ?? 0;
+  return [
+    { label: t('menu.addAfter'), disabled: !canEditPages(), onSelect: () => addSlide({ after: n }) },
+    { label: t('menu.moveEarlier'), disabled: !canMove() || n <= 1, onSelect: () => requestMove(n, n - 1) },
+    { label: t('menu.moveLater'), disabled: !canMove() || n >= count, onSelect: () => requestMove(n, n + 1) },
+    { label: t('menu.deleteSlide'), title: t('menu.deleteSlideTitle'), danger: true, divider: true, disabled: !canRemoveSlides(), onSelect: () => requestRemoveSlide(n) },
+  ];
+}
+
+// Right-clicking a slide in the strip (or pressing the menu key on it) shows what can be done with it. This is the only way to delete a
+// slide, so that it cannot be done by a slip of the pointer. The browser's own menu is kept away from the whole strip.
+el.rail.addEventListener('contextmenu', (event) => {
+  event.preventDefault();
+  const target = event.target instanceof Element ? event.target : null;
+  const item = target?.closest('li.page');
+  if (!item || !state?.deck) {
+    pageMenu.close({ restore: false });
+    return;
+  }
+  const opener = item.querySelector('button.thumb');
+  const box = opener.getBoundingClientRect();
+  // A press of the menu key comes with no pointer position, so the menu opens at the slide.
+  const fromKeyboard = event.clientX === 0 && event.clientY === 0;
+  pageMenu.open(pageMenuEntries(item), { x: fromKeyboard ? box.left + box.width / 2 : event.clientX, y: fromKeyboard ? box.bottom : event.clientY, from: opener });
+});
 
 createDrag({
   list: el.thumbs,
@@ -854,12 +917,6 @@ el.thumbs.addEventListener('click', (event) => {
   }
   if (target?.closest('.add-tile')) {
     addSlideAtEnd();
-    return;
-  }
-  const remove = target?.closest('.thumb__x');
-  if (remove) {
-    if (remove.dataset.draft) requestRemoveDraft(remove.dataset.draft);
-    else requestRemoveSlide(Number(remove.dataset.n));
     return;
   }
   const button = target?.closest('.thumb');
@@ -894,7 +951,9 @@ el.notesButton.addEventListener('click', toggleNotes);
 el.refresh.addEventListener('click', () => post('api/refresh').catch(reportError));
 el.external.addEventListener('click', () => post('api/open-external').catch(reportError));
 el.helpButton.addEventListener('click', () => setHelp(el.help.hidden));
+el.settingsButton.addEventListener('click', () => setSettings(el.settingsMenu.hidden));
 for (const button of el.langButtons) button.addEventListener('click', () => chooseLanguage(normalizeLanguage(button.dataset.lang)));
+for (const button of el.themeButtons) button.addEventListener('click', () => chooseTheme(button.dataset.theme));
 el.noticeClose.addEventListener('click', () => {
   if (!state?.notice) return;
   dismissedNotice = state.notice.id;
@@ -902,8 +961,9 @@ el.noticeClose.addEventListener('click', () => {
   renderNotice();
 });
 document.addEventListener('click', (event) => {
-  if (el.help.hidden || !(event.target instanceof Node)) return;
-  if (!el.help.contains(event.target) && !el.helpButton.contains(event.target)) setHelp(false);
+  if (!(event.target instanceof Node)) return;
+  if (!el.help.hidden && !el.help.contains(event.target) && !el.helpButton.contains(event.target)) setHelp(false);
+  if (!el.settingsMenu.hidden && !el.settingsMenu.contains(event.target) && !el.settingsButton.contains(event.target)) setSettings(false);
 });
 
 document.addEventListener('keydown', (event) => {
@@ -911,6 +971,12 @@ document.addEventListener('keydown', (event) => {
   if (event.key === 'Escape' && !el.help.hidden) {
     setHelp(false);
     el.helpButton.focus();
+    event.preventDefault();
+    return;
+  }
+  if (event.key === 'Escape' && !el.settingsMenu.hidden) {
+    setSettings(false);
+    el.settingsButton.focus();
     event.preventDefault();
     return;
   }
@@ -952,10 +1018,6 @@ document.addEventListener('keydown', (event) => {
       break;
     case 'End':
       showPage(pageList().at(-1));
-      break;
-    case 'Delete':
-      if (state.draft) requestRemoveDraft(state.draft);
-      else requestRemoveSlide(state.current);
       break;
     case 'n':
     case 'N':
