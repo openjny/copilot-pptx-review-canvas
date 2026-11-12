@@ -269,8 +269,8 @@ def main() -> None:
     prs.slide_width, prs.slide_height = Inches(13.333), Inches(7.5)
     core = prs.core_properties
     core.title = "Q3 product review (sample)"
-    core.author = core.last_modified_by = "Copilot PPTX Canvas"
-    core.comments = "Neutral sample deck for the Copilot PPTX Canvas README."
+    core.author = core.last_modified_by = "Copilot PPTX Review Canvas"
+    core.comments = "Neutral sample deck for the Copilot PPTX Review Canvas README."
     core.created = core.modified = datetime(2026, 11, 12)
     for build in (slide_cover, slide_kpis, slide_chart, slide_shipped, slide_roadmap, slide_next):
         build(prs)

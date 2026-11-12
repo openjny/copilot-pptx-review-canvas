@@ -38,7 +38,7 @@ All paths are inside `com.github.copilot/extensions/pptx-slide-viewer/`.
 | `lib/registry.mjs` | One viewer per canvas instance; owns the shared stores, the deck cache and the i18n object. |
 | `lib/viewer-instance.mjs` | The HTTP server, state snapshots and events, file watching, and the API for marks, comments, new slides, reordering, deleting and creating decks. |
 | `lib/deck-cache.mjs` | Render cache. Shares a running render and stops it only when everyone gave up. Reordering reuses already rendered images (`derive`). |
-| `lib/powerpoint-renderer.mjs`, `scripts/render-deck.ps1` | Exports slide and thumbnail PNGs, titles, notes and shape geometry through PowerPoint COM. |
+| `lib/renderer.mjs`, `scripts/render-deck.ps1` | Exports slide and thumbnail PNGs, titles, notes and shape geometry through PowerPoint COM. |
 | `lib/new-deck.mjs`, `scripts/new-deck.ps1` | Picks a free file name and creates a one-slide `.pptx` through PowerPoint COM. |
 | `lib/powershell.mjs` | Locates Windows PowerShell 5.1. |
 | `lib/pptx-zip.mjs` | Reads the ZIP directory of a `.pptx`, replaces one part, removes parts; every other part is copied byte for byte. |

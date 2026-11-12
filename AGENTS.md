@@ -15,7 +15,7 @@ How to work in this repository, for agents and people. [README.md](./README.md) 
 - **No inline styles** in the page (`style-src 'self'`): use classes or the CSSOM.
 - **No dependencies and no build step.** Do not add a package or a bundler.
 - **Existing data must keep loading.** Records are `{ format, version, data }`; changing a record shape needs a new version and a migration. Data written by older versions (Japanese draft titles, for example) is still read.
-- **Short paths.** Keep every file path in the repository under 80 characters; see CONTRIBUTING.md for why.
+- **Short paths.** Keep every file path in the repository at 72 characters or fewer; see CONTRIBUTING.md for why.
 - **Screenshots** in `docs/images/` and `assets/preview.png` show only the sample deck on a neutral path (no user names, no real decks). Retake them when the UI changes: start a viewer with the real renderer on a copy of the sample deck, and drive the page with a browser.
 
 ## Commits

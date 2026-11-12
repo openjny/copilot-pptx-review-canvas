@@ -13,7 +13,7 @@ const plugin = readJson('plugin.json');
 const marketplace = readJson('.github/plugin/marketplace.json');
 const extensionDir = 'com.github.copilot/extensions/pptx-slide-viewer';
 const SEMVER = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
-const MAX_PATH_LENGTH = 80;
+const MAX_PATH_LENGTH = 72;
 
 function* walk(dir) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {

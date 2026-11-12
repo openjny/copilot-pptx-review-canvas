@@ -1,6 +1,6 @@
 <div align="center">
 
-# Copilot PPTX Canvas
+# Copilot PPTX Review Canvas
 
 **Mark up slides. Let your Copilot agent fix them.**
 
@@ -79,13 +79,13 @@ flowchart LR
 With the Copilot CLI, add this repository as a marketplace and install the plugin from it:
 
 ```powershell
-copilot plugin marketplace add openjny/copilot-pptx-canvas
-copilot plugin install copilot-pptx-canvas@copilot-pptx-canvas
+copilot plugin marketplace add openjny/copilot-pptx-review-canvas
+copilot plugin install copilot-pptx-review-canvas@copilot-pptx-review-canvas
 ```
 
-In VS Code, use [Install in VS Code](https://vscode.dev/redirect?url=vscode%3A%2F%2Fchat-plugin%2Finstall%3Fsource%3Dopenjny%252Fcopilot-pptx-canvas%26plugin%3Dcopilot-pptx-canvas), or add `openjny/copilot-pptx-canvas` as a marketplace in the Agent Customizations editor, choose **Canvases** under **Browse**, and select **Install**.
+In VS Code, use [Install in VS Code](https://vscode.dev/redirect?url=vscode%3A%2F%2Fchat-plugin%2Finstall%3Fsource%3Dopenjny%252Fcopilot-pptx-review-canvas%26plugin%3Dcopilot-pptx-review-canvas), or add `openjny/copilot-pptx-review-canvas` as a marketplace in the Agent Customizations editor, choose **Canvases** under **Browse**, and select **Install**.
 
-Start a new session afterwards: a canvas appears only in sessions that begin after the plugin is installed. To update, run `copilot plugin update copilot-pptx-canvas@copilot-pptx-canvas`.
+Start a new session afterwards: a canvas appears only in sessions that begin after the plugin is installed. To update, run `copilot plugin update copilot-pptx-review-canvas@copilot-pptx-review-canvas`.
 
 > [!NOTE]
 > The canvas id is `pptx-slide-viewer`. If you installed the same canvas from another source, uninstall it first so that it is not registered twice.

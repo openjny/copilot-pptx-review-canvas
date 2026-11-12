@@ -1,6 +1,6 @@
 <div align="center">
 
-# Copilot PPTX Canvas
+# Copilot PPTX Review Canvas
 
 **スライドに書き込んで、Copilot のエージェントに直してもらう。**
 
@@ -79,13 +79,13 @@ flowchart LR
 Copilot CLI では、このリポジトリをマーケットプレイスとして追加し、そこからプラグインをインストールします。
 
 ```powershell
-copilot plugin marketplace add openjny/copilot-pptx-canvas
-copilot plugin install copilot-pptx-canvas@copilot-pptx-canvas
+copilot plugin marketplace add openjny/copilot-pptx-review-canvas
+copilot plugin install copilot-pptx-review-canvas@copilot-pptx-review-canvas
 ```
 
-VS Code では、[VS Code にインストール](https://vscode.dev/redirect?url=vscode%3A%2F%2Fchat-plugin%2Finstall%3Fsource%3Dopenjny%252Fcopilot-pptx-canvas%26plugin%3Dcopilot-pptx-canvas)を使います。または、Agent Customizations エディターで `openjny/copilot-pptx-canvas` をマーケットプレイスとして追加し、Browse の Canvases から Install を選びます。
+VS Code では、[VS Code にインストール](https://vscode.dev/redirect?url=vscode%3A%2F%2Fchat-plugin%2Finstall%3Fsource%3Dopenjny%252Fcopilot-pptx-review-canvas%26plugin%3Dcopilot-pptx-review-canvas)を使います。または、Agent Customizations エディターで `openjny/copilot-pptx-review-canvas` をマーケットプレイスとして追加し、Browse の Canvases から Install を選びます。
 
-インストールのあとは、新しいセッションを始めてください。キャンバスは、インストールのあとに始めたセッションにだけ表示されます。更新するには `copilot plugin update copilot-pptx-canvas@copilot-pptx-canvas` を実行します。
+インストールのあとは、新しいセッションを始めてください。キャンバスは、インストールのあとに始めたセッションにだけ表示されます。更新するには `copilot plugin update copilot-pptx-review-canvas@copilot-pptx-review-canvas` を実行します。
 
 > [!NOTE]
 > キャンバスの ID は `pptx-slide-viewer` です。同じキャンバスを別の方法でインストールしている場合は、二重に登録されないよう、先にアンインストールしてください。

@@ -4,7 +4,7 @@ import { DeckCache } from './deck-cache.mjs';
 import { ViewerError } from './errors.mjs';
 import { DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES, createI18n, normalizeLanguage } from './i18n.mjs';
 import { createPresentationWithPowerPoint } from './new-deck.mjs';
-import { renderWithPowerPoint } from './powerpoint-renderer.mjs';
+import { renderWithPowerPoint } from './renderer.mjs';
 import { PositionStore, SettingsStore, dataRootFor } from './store.mjs';
 import { ViewerInstance } from './viewer-instance.mjs';
 

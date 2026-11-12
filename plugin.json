@@ -1,14 +1,14 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
-  "name": "copilot-pptx-canvas",
-  "description": "A Copilot canvas that shows a PowerPoint deck as slide images where you draw, comment, add new slides and reorder or delete slides, so the agent can read your feedback and edit the deck.",
+  "name": "copilot-pptx-review-canvas",
+  "description": "Review PowerPoint decks with your Copilot agent. A canvas that shows the deck as slide images where you draw, comment, sketch new slides and reorder or delete slides, so the agent can read your feedback and edit the deck.",
   "version": "1.0.0",
   "author": {
     "name": "openjny",
     "url": "https://github.com/openjny"
   },
-  "homepage": "https://github.com/openjny/copilot-pptx-canvas#readme",
-  "repository": "https://github.com/openjny/copilot-pptx-canvas",
+  "homepage": "https://github.com/openjny/copilot-pptx-review-canvas#readme",
+  "repository": "https://github.com/openjny/copilot-pptx-review-canvas",
   "license": "MIT",
   "keywords": [
     "canvas",

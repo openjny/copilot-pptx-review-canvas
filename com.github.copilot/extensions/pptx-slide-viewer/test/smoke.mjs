@@ -1,14 +1,14 @@
-// Opt-in check against the real PowerPoint: node test/smoke-powerpoint.mjs <deck.pptx>
+// Opt-in check against the real PowerPoint: node test/smoke.mjs <deck.pptx>
 // It is not named *.test.mjs so that `node --test` does not start PowerPoint.
 import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { DeckCache, resolveDeckSource } from '../lib/deck-cache.mjs';
-import { renderWithPowerPoint } from '../lib/powerpoint-renderer.mjs';
+import { renderWithPowerPoint } from '../lib/renderer.mjs';
 
 const target = process.argv[2];
 if (!target) {
-  console.error('usage: node test/smoke-powerpoint.mjs <deck.pptx>');
+  console.error('usage: node test/smoke.mjs <deck.pptx>');
   process.exit(2);
 }
 
