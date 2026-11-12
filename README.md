@@ -83,7 +83,7 @@ copilot plugin marketplace add openjny/copilot-pptx-review-canvas
 copilot plugin install copilot-pptx-review-canvas@copilot-pptx-review-canvas
 ```
 
-In VS Code, use [Install in VS Code](https://vscode.dev/redirect?url=vscode%3A%2F%2Fchat-plugin%2Finstall%3Fsource%3Dopenjny%252Fcopilot-pptx-review-canvas%26plugin%3Dcopilot-pptx-review-canvas), or add `openjny/copilot-pptx-review-canvas` as a marketplace in the Agent Customizations editor, choose **Canvases** under **Browse**, and select **Install**.
+In VS Code, add this repository as a marketplace and install the plugin from it. Run **Chat: Open Customizations**, select **Browse**, open the source menu, choose **Configure Marketplaces** and then **Add Marketplace**, and enter `openjny/copilot-pptx-review-canvas`. Back in **Browse**, pick that marketplace from the source menu and select **Install** on the plugin.
 
 Start a new session afterwards: a canvas appears only in sessions that begin after the plugin is installed. To update, run `copilot plugin update copilot-pptx-review-canvas@copilot-pptx-review-canvas`.
 

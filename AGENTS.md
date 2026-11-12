@@ -16,6 +16,7 @@ How to work in this repository, for agents and people. [README.md](./README.md) 
 - **No dependencies and no build step.** Do not add a package or a bundler.
 - **Existing data must keep loading.** Records are `{ format, version, data }`; changing a record shape needs a new version and a migration. Data written by older versions (Japanese draft titles, for example) is still read.
 - **Short paths.** Keep every file path in the repository at 72 characters or fewer; see CONTRIBUTING.md for why.
+- **No one-click VS Code install link in a README.** GitHub removes `vscode://` links when it renders Markdown, and `https://vscode.dev/redirect` appends `&url=...` to the link it opens, which VS Code decodes into a second `plugin` parameter ("The plugin link must specify a plugin name."). Describe the steps in words. A `vscode://chat-plugin/install?source=owner%2Frepo&plugin=name` link works only on a page that keeps it, such as the Awesome Copilot listing.
 - **Screenshots** in `docs/images/` and `assets/preview.png` show only the sample deck on a neutral path (no user names, no real decks). Retake them when the UI changes: start a viewer with the real renderer on a copy of the sample deck, and drive the page with a browser.
 
 ## Commits
