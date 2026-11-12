@@ -19,16 +19,15 @@ English | [日本語](./README.ja.md)
 
 ## Why
 
+Even when agents produce the deliverables, deciding what is good is still up to people. This canvas passes your intent and your judgment to the agent in a form it can use, and keeps the whole exchange with the agent on one screen.
+
+- **Why does the agent need your intent at all?** Once models and agents can produce high-quality deliverables without any instructions, being able to produce the same thing has no value. That your ideas and your thinking create value has not changed in any era.
+- **Why review instead of editing the .pptx directly?** In the short run, editing directly is often cheaper. In the long run, it pays to keep a log of what you thought while reviewing (a trace of your thinking). For example, a review log lets you turn recurring corrections into a skill, so the same mistakes are not repeated.
+- **Why not just tell the agent in chat?** Text cannot carry all of your intent. Clicking the spot you are looking at to attach a comment, or sketching an idea with the freehand pen, gets much more information to the agent, faster.
+- **Why not review in PowerPoint?** PowerPoint comments make reviewing efficient, but you have to leave the UI where GitHub Copilot runs (for example, VS Code). With the canvas, instructing the agent and reviewing its output both happen in the application that runs the agent.
+- **Why not build a review page in HTML and show it in the Integrated Browser?** A canvas can embed an API for talking to the agent. The agent can operate the canvas (for example, open a deck, comment and reply), and you can instruct the agent through the canvas (for example, **Submit review** asks it to make the changes). The whole exchange between you and the agent goes through the canvas. See the [actions for the agent](./docs/usage.md#actions-for-the-agent).
+
 ![You mark up slides and press Submit review in the canvas. The canvas passes your feedback to the agent as data. The agent edits and saves the presentation, and the canvas renders it again and shows you fresh slide images](./docs/images/concept.png)
-
-Giving feedback on a deck in chat means describing positions in words: "on slide 5, the third bullet, make it shorter". It is slow, and the agent has to guess what you mean.
-
-With this canvas you point instead. It sits between you and your agent, and the agent receives:
-
-- the slide image with your marks and numbered comments on it,
-- each mark and comment as data, with its position on the slide,
-- the names of the shapes under each mark, which map back to your build script or template when the deck is generated.
-
 ## Features
 
 - **Draw and comment**: pen, highlighter and eraser (hold `Shift` for a straight line, `Ctrl` for a rectangle). Comment on a point, an area or the whole slide: click, drag or right-click the slide and write in a bubble beside the spot.
