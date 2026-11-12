@@ -6,7 +6,7 @@ import { whitePng } from './png.mjs';
 import { normalizePathKey, writeFileAtomic } from './store.mjs';
 
 export const SKETCHBOOK_EXTENSION = '.sketch';
-const SKETCHBOOK_FORMAT = 'pptx-slide-viewer.sketchbook';
+const SKETCHBOOK_FORMAT = 'pptx-review-canvas.sketchbook';
 const MAX_NAME_LENGTH = 60;
 const RESERVED_NAMES = /^(con|prn|aux|nul|com\d|lpt\d)$/i;
 // A sketchbook has no .pptx, so it is shown as a deck of one white 16:9 page (the size PowerPoint uses by default).

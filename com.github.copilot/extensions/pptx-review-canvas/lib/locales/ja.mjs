@@ -3,7 +3,7 @@
 
 export default {
   'common.listSeparator': '、',
-  'app.title': 'PowerPoint ビューア',
+  'app.title': 'PowerPoint レビュー',
 
   'status.rendering': '描画中',
   'status.renderingProgress': '描画中（{done} / {total}）',
@@ -32,7 +32,7 @@ export default {
   'unread.slides': 'スライド {list}',
   'unread.drafts': '新しいスライド {count} 枚',
   'unread.deckLine': '- {deck}: {parts}（canvas instanceId: {instanceId}）',
-  'unread.intro': 'PowerPoint ビューア（canvas {canvasId}）で、ユーザーがペンや蛍光ペンで書き込んだページ、コメントを書いたページ、または新しいスライドを追加したページがあります。まだ読んでいません。',
+  'unread.intro': 'PowerPoint レビュー（canvas {canvasId}）で、ユーザーがペンや蛍光ペンで書き込んだページ、コメントを書いたページ、または新しいスライドを追加したページがあります。まだ読んでいません。',
   'unread.outro': '今回のメッセージはこの書き込みやコメントへのフィードバックかもしれません。スライドを直す・作る前に、invoke_canvas_action で get_annotations を呼び、書き込みやコメントの位置と画像を確認してください。',
 
   'report.nothing': '書き込みもコメントも新しいスライドもありません。',
@@ -230,7 +230,7 @@ export default {
   'http.imageNotFound': '画像が見つかりません。',
   'http.internal': '内部エラーです。',
 
-  'log.registered': 'PowerPoint ビューアを登録しました。',
+  'log.registered': 'PowerPoint レビューを登録しました。',
   'log.closeFailed': '閉じる処理に失敗しました: {detail}',
   'log.unreadCheckFailed': '書き込みの確認に失敗しました: {detail}',
   'log.unhandledRejection': '未処理の拒否: {detail}',

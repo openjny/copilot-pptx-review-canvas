@@ -11,7 +11,7 @@ const readJson = (relative) => JSON.parse(fs.readFileSync(path.join(root, relati
 const packageJson = readJson('package.json');
 const plugin = readJson('plugin.json');
 const marketplace = readJson('.github/plugin/marketplace.json');
-const extensionDir = 'com.github.copilot/extensions/pptx-slide-viewer';
+const extensionDir = 'com.github.copilot/extensions/pptx-review-canvas';
 const SEMVER = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
 const MAX_PATH_LENGTH = 72;
 
@@ -55,7 +55,7 @@ test('the preview image is the size catalogs expect', () => {
 test('the canvas extension is where the plugin format looks for it', () => {
   assert.ok(fs.existsSync(path.join(root, extensionDir, 'extension.mjs')));
   const manifest = readJson(`${extensionDir}/copilot-extension.json`);
-  assert.equal(manifest.name, 'pptx-slide-viewer');
+  assert.equal(manifest.name, 'pptx-review-canvas');
   assert.equal(manifest.version, Number(plugin.version.split('.')[0]));
 });
 

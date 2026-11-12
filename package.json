@@ -10,7 +10,7 @@
     "node": ">=22"
   },
   "scripts": {
-    "test": "node --test \"test/*.test.mjs\" \"com.github.copilot/extensions/pptx-slide-viewer/test/*.test.mjs\"",
-    "smoke": "node com.github.copilot/extensions/pptx-slide-viewer/test/smoke.mjs"
+    "test": "node --test \"test/*.test.mjs\" \"com.github.copilot/extensions/pptx-review-canvas/test/*.test.mjs\"",
+    "smoke": "node com.github.copilot/extensions/pptx-review-canvas/test/smoke.mjs"
   }
 }

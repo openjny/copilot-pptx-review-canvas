@@ -4,7 +4,7 @@ How to work in this repository, for agents and people. [README.md](./README.md) 
 
 ## Commands
 
-- Test: `npm test` (Node 22 or later). It runs `node --test` with the file glob `com.github.copilot/extensions/pptx-slide-viewer/test/*.test.mjs`; a bare directory does not work.
+- Test: `npm test` (Node 22 or later). It runs `node --test` with the file globs `test/*.test.mjs` and `com.github.copilot/extensions/pptx-review-canvas/test/*.test.mjs`; a bare directory does not work.
 - Real PowerPoint check: `npm run smoke`. Unit tests never start PowerPoint.
 - Sample deck: `uv run --with python-pptx python scripts/make_sample_deck.py`. Change the script, not `samples/q3-review.pptx`.
 

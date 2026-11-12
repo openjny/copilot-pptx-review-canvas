@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { createI18n, msg, normalizeLanguage } from './i18n.mjs';
 
-export const CANVAS_ID = 'pptx-slide-viewer';
+export const CANVAS_ID = 'pptx-review-canvas';
 
 /** `COPILOT_HOME` exactly as given when it is non-empty, otherwise `~/.copilot`. */
 export function resolveCopilotHome(env = process.env, homedir = os.homedir()) {
@@ -100,7 +100,7 @@ export async function quarantine(file) {
   return target;
 }
 
-const POSITION_FORMAT = 'pptx-slide-viewer.position';
+const POSITION_FORMAT = 'pptx-review-canvas.position';
 const POSITION_VERSION = 1;
 const MAX_POSITION_FILES = 100;
 
@@ -185,7 +185,7 @@ export class PositionStore {
   }
 }
 
-const SETTINGS_FORMAT = 'pptx-slide-viewer.settings';
+const SETTINGS_FORMAT = 'pptx-review-canvas.settings';
 const SETTINGS_VERSION = 1;
 
 function validateSettings(data) {

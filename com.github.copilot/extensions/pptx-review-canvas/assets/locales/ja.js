@@ -2,7 +2,7 @@
 // The singular and the plural (One / Other) read the same in Japanese.
 
 export default {
-  'app.title': 'PowerPoint ビューア',
+  'app.title': 'PowerPoint レビュー',
 
   'common.listSeparator': '、',
   'error.request': 'リクエストに失敗しました（HTTP {status}）',

@@ -2,7 +2,7 @@
 // Keys ending in One / Other are the singular and the plural of a text that counts something (see `tn()` in i18n.js).
 
 export default {
-  'app.title': 'PowerPoint viewer',
+  'app.title': 'PowerPoint Review',
 
   'common.listSeparator': ', ',
   'error.request': 'Request failed (HTTP {status})',

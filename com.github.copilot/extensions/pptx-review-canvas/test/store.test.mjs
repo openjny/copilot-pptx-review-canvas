@@ -9,7 +9,7 @@ test('resolveCopilotHome uses COPILOT_HOME exactly as given, else ~/.copilot', (
   assert.equal(resolveCopilotHome({ COPILOT_HOME: 'c:\\Custom\\Home' }, 'C:\\Users\\x'), 'c:\\Custom\\Home');
   assert.equal(resolveCopilotHome({ COPILOT_HOME: '' }, path.join('/home', 'x')), path.join('/home', 'x', '.copilot'));
   assert.equal(resolveCopilotHome({}, path.join('/home', 'x')), path.join('/home', 'x', '.copilot'));
-  assert.equal(dataRootFor('/h'), path.join('/h', 'extension-data', 'pptx-slide-viewer'));
+  assert.equal(dataRootFor('/h'), path.join('/h', 'extension-data', 'pptx-review-canvas'));
 });
 
 test('writeFileAtomic replaces the target and leaves no temporary file', async () => {
@@ -75,7 +75,7 @@ test('SettingsStore saves the language in the order it was asked and keeps an un
   assert.deepEqual(await store.load(), { language: 'ja' });
   assert.deepEqual(JSON.parse(await fs.readFile(path.join(root, 'settings.json'), 'utf8')).data, { language: 'ja' });
 
-  await fs.writeFile(store.file, JSON.stringify({ format: 'pptx-slide-viewer.settings', version: 1, data: { language: 'fr' } }));
+  await fs.writeFile(store.file, JSON.stringify({ format: 'pptx-review-canvas.settings', version: 1, data: { language: 'fr' } }));
   assert.deepEqual(await store.load(), { language: null });
   assert.equal(logs.length, 1);
   assert.deepEqual((await fs.readdir(root)).filter((name) => name.includes('.corrupt-')).length, 1);

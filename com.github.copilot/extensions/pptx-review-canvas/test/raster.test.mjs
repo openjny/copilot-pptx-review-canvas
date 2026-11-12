@@ -4,6 +4,7 @@ import path from 'node:path';
 import { test } from 'node:test';
 import { decodePng, encodePng } from '../lib/png.mjs';
 import { compositeAnnotations, drawBadge, drawPolyline, drawStrokes } from '../lib/raster.mjs';
+import { dataRootFor } from '../lib/store.mjs';
 
 function solid(width, height, [r, g, b]) {
   const data = new Uint8Array(width * height * 4);
@@ -121,7 +122,7 @@ test('compositeAnnotations returns a PNG of the same size with the marks on it',
 });
 
 test('decodePng reads the PNG that PowerPoint wrote, when the cache has one', async (t) => {
-  const decks = path.join(process.env.COPILOT_HOME || path.join(process.env.USERPROFILE ?? '', '.copilot'), 'extension-data', 'pptx-slide-viewer', 'decks');
+  const decks = path.join(dataRootFor(), 'decks');
   const keys = await fs.readdir(decks).catch(() => []);
   const file = keys.length ? path.join(decks, keys[0], 's0001.png') : null;
   if (!file || !(await fs.stat(file).catch(() => null))) return t.skip('there is no rendered image in the cache');

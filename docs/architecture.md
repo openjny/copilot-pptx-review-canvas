@@ -23,14 +23,14 @@ flowchart LR
   W <-->|HTTP and server-sent events| V
 ```
 
-- The Copilot client loads `extension.mjs`, which registers one canvas (`pptx-slide-viewer`) and its actions.
+- The Copilot client loads `extension.mjs`, which registers one canvas (`pptx-review-canvas`) and its actions.
 - Each open canvas gets a `ViewerInstance`: a small HTTP server bound to `127.0.0.1` on a random port that serves the page and a JSON API, and pushes state changes over server-sent events. The page is shown inside the canvas.
 - `DeckCache` renders a deck once with desktop PowerPoint and shares the result between viewers.
 - Marks, comments and new slides are stored per deck path and shared by every viewer of that deck.
 
 ## Modules
 
-All paths are inside `com.github.copilot/extensions/pptx-slide-viewer/`.
+All paths are inside `com.github.copilot/extensions/pptx-review-canvas/`.
 
 | File | Responsibility |
 |:--|:--|
@@ -90,7 +90,7 @@ The viewer refuses to rewrite a deck that is open in another app, was changed el
 
 ## Data
 
-Everything is kept under `~/.copilot/extension-data/pptx-slide-viewer/` (or `$COPILOT_HOME/extension-data/...`).
+Everything is kept under `~/.copilot/extension-data/pptx-review-canvas/` (or `$COPILOT_HOME/extension-data/...`).
 
 | Path | Content |
 |:--|:--|

@@ -163,7 +163,7 @@ test('draft titles written by the Japanese-only versions are read as "New slide"
     draft.title = legacy[i];
   });
   await fs.mkdir(store.dir, { recursive: true });
-  await fs.writeFile(store.fileFor('C:\\x\\deck.pptx'), JSON.stringify({ format: 'pptx-slide-viewer.annotations', version: 1, data: record }));
+  await fs.writeFile(store.fileFor('C:\\x\\deck.pptx'), JSON.stringify({ format: 'pptx-review-canvas.annotations', version: 1, data: record }));
   const reopened = await new AnnotationStore(root).attach(deckOf(['h1', 'h2']));
   assert.deepEqual(reopened.book.drafts().map((draft) => draft.title), ['New slide 7', 'New slide 2', 'New slide', 'My own title']);
 });

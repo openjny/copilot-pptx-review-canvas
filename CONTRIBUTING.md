@@ -15,7 +15,7 @@ Thanks for helping with Copilot PPTX Review Canvas. Bug reports, fixes, translat
 npm test
 ```
 
-This runs every `*.test.mjs` file in [`com.github.copilot/extensions/pptx-slide-viewer/test/`](./com.github.copilot/extensions/pptx-slide-viewer/test). To check the real renderer against your PowerPoint:
+This runs every `*.test.mjs` file in [`com.github.copilot/extensions/pptx-review-canvas/test/`](./com.github.copilot/extensions/pptx-review-canvas/test). To check the real renderer against your PowerPoint:
 
 ```powershell
 npm run smoke
@@ -34,7 +34,7 @@ Uninstall any other copy of the plugin first, so that the canvas is not register
 
 ## Where things live
 
-[docs/architecture.md](./docs/architecture.md) describes the modules, the HTTP API and the data the extension keeps. The extension itself is in `com.github.copilot/extensions/pptx-slide-viewer/`; the plugin manifest is `plugin.json` at the repository root.
+[docs/architecture.md](./docs/architecture.md) describes the modules, the HTTP API and the data the extension keeps. The extension itself is in `com.github.copilot/extensions/pptx-review-canvas/`; the plugin manifest is `plugin.json` at the repository root.
 
 ## Guidelines
 
@@ -53,6 +53,6 @@ Uninstall any other copy of the plugin first, so that the canvas is not register
 
 ## Reporting a bug
 
-Open an issue with the steps to reproduce, what you expected and what happened, your Windows and PowerPoint versions, and which Copilot client you use (VS Code, Copilot CLI or the Copilot app). The extension writes its logs to the session timeline, and its data is kept under `~/.copilot/extension-data/pptx-slide-viewer/`; please do not attach decks that contain confidential information.
+Open an issue with the steps to reproduce, what you expected and what happened, your Windows and PowerPoint versions, and which Copilot client you use (VS Code, Copilot CLI or the Copilot app). The extension writes its logs to the session timeline, and its data is kept under `~/.copilot/extension-data/pptx-review-canvas/`; please do not attach decks that contain confidential information.
 
 For security problems, follow [SECURITY.md](./SECURITY.md) instead of opening a public issue.

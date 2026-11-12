@@ -88,14 +88,14 @@ In VS Code, use [Install in VS Code](https://vscode.dev/redirect?url=vscode%3A%2
 Start a new session afterwards: a canvas appears only in sessions that begin after the plugin is installed. To update, run `copilot plugin update copilot-pptx-review-canvas@copilot-pptx-review-canvas`.
 
 > [!NOTE]
-> The canvas id is `pptx-slide-viewer`. If you installed the same canvas from another source, uninstall it first so that it is not registered twice.
+> The canvas id is `pptx-review-canvas`. Install the plugin from one source only: the same plugin installed from two sources registers the canvas twice.
 
 > [!NOTE]
-> The extension registers one hook that runs when you send a message: if you have marks that the agent has not read yet, it adds a short hidden note saying so. Because hooks are a privileged capability, your Copilot client asks you to approve the extension the first time. The hook is in [`extension.mjs`](./com.github.copilot/extensions/pptx-slide-viewer/extension.mjs).
+> The extension registers one hook that runs when you send a message: if you have marks that the agent has not read yet, it adds a short hidden note saying so. Because hooks are a privileged capability, your Copilot client asks you to approve the extension the first time. The hook is in [`extension.mjs`](./com.github.copilot/extensions/pptx-review-canvas/extension.mjs).
 
 ## Quick start
 
-1. Start a new Copilot session and ask: *"Open `samples/q3-review.pptx` in the PowerPoint viewer."* The first render takes a few seconds while PowerPoint starts.
+1. Start a new Copilot session and ask: *"Open `samples/q3-review.pptx` in PowerPoint Review."* The first render takes a few seconds while PowerPoint starts.
 2. Pick the comment tool (`C`) and click a spot on a slide, or draw a circle with the pen (`P`). Add a few comments.
 3. Tell the agent what to do: *"Apply my marks and comments."* It reads them, edits the deck and saves. The canvas refreshes by itself.
 
@@ -146,7 +146,7 @@ The canvas starts in English. Open the help panel (**?**) and choose **English**
 
 ## Data and privacy
 
-Everything is stored under `~/.copilot/extension-data/pptx-slide-viewer/`: rendered images, marks, comments, new slides, backups of files before a rewrite, and the last slide you looked at in each deck. Nothing leaves your PC.
+Everything is stored under `~/.copilot/extension-data/pptx-review-canvas/`: rendered images, marks, comments, new slides, backups of files before a rewrite, and the last slide you looked at in each deck. Nothing leaves your PC.
 
 - The viewer is a small web server on `127.0.0.1` with a random port, for the open canvas only. It rejects other hosts and other origins.
 - Decks are opened read-only in PowerPoint with macros disabled and no prompts.

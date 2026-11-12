@@ -116,7 +116,7 @@ function unreadMarksContext() {
   return [t('unread.intro', { canvasId: CANVAS_ID }), ...lines, t('unread.outro')].join('\n');
 }
 
-const pptxSlideViewer = createCanvas({
+const pptxReviewCanvas = createCanvas({
   id: CANVAS_ID,
   displayName: t('app.title'),
   description: 'Shows a PowerPoint (.pptx) deck as slide images with speaker notes, lets the user draw on slides and on new-slide drafts (or on a blank sketchbook with no file), reorder slides by drag and drop, create a new .pptx, and lets the agent read those marks (get_annotations), open decks and move between slides.',
@@ -344,7 +344,7 @@ const pptxSlideViewer = createCanvas({
 });
 
 session = await joinSession({
-  canvases: [pptxSlideViewer],
+  canvases: [pptxReviewCanvas],
   hooks: {
     onUserPromptSubmitted: async () => {
       try {

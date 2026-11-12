@@ -3,7 +3,7 @@
 
 export default {
   'common.listSeparator': ', ',
-  'app.title': 'PowerPoint Viewer',
+  'app.title': 'PowerPoint Review',
 
   'status.rendering': 'Rendering',
   'status.renderingProgress': 'Rendering ({done} / {total})',
@@ -32,7 +32,7 @@ export default {
   'unread.slides': 'Slides {list}',
   'unread.drafts': 'New slides: {count}',
   'unread.deckLine': '- {deck}: {parts} (canvas instanceId: {instanceId})',
-  'unread.intro': 'In the PowerPoint viewer (canvas {canvasId}), the user has drawn on pages with the pen or highlighter, commented on pages, or added new slides, and you have not read any of it yet.',
+  'unread.intro': 'In the PowerPoint Review canvas ({canvasId}), the user has drawn on pages with the pen or highlighter, commented on pages, or added new slides, and you have not read any of it yet.',
   'unread.outro': 'This message may be feedback on those marks or comments. Before you fix or create slides, call get_annotations with invoke_canvas_action to see where the marks and comments are and to view their images.',
 
   'report.nothing': 'There are no marks, comments or new slides.',
@@ -230,7 +230,7 @@ export default {
   'http.imageNotFound': 'Image not found.',
   'http.internal': 'Internal error.',
 
-  'log.registered': 'Registered the PowerPoint viewer.',
+  'log.registered': 'Registered the PowerPoint Review canvas.',
   'log.closeFailed': 'Could not close the viewer: {detail}',
   'log.unreadCheckFailed': 'Could not check for unread marks: {detail}',
   'log.unhandledRejection': 'Unhandled rejection: {detail}',

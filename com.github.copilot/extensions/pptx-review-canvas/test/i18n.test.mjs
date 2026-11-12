@@ -174,20 +174,20 @@ test('POST /api/language saves the choice, switches every viewer at once and is 
   const stream = listen(second);
   try {
     assert.equal(json(await request(`${first.url}api/state`)).language, 'en');
-    assert.equal(first.title, 'PowerPoint Viewer');
+    assert.equal(first.title, 'PowerPoint Review');
 
     const response = await postJson(`${first.url}api/language`, { language: 'ja-JP' });
     assert.equal(response.status, 200);
     assert.deepEqual(json(response), { language: 'ja' }, 'the answer is the normalized language');
     assert.equal(json(await request(`${first.url}api/state`)).language, 'ja');
     assert.equal(json(await request(`${second.url}api/state`)).language, 'ja');
-    assert.equal(first.title, 'PowerPoint ビューア');
+    assert.equal(first.title, 'PowerPoint レビュー');
     assert.equal(registry.language, 'ja');
     await until(() => stream.states.at(-1)?.language === 'ja');
     assert.equal(stream.states.at(-1).rev > stream.states[0].rev, true, 'the other viewer was sent a new state');
 
     const saved = JSON.parse(await fs.readFile(path.join(dataRoot, 'settings.json'), 'utf8'));
-    assert.deepEqual(saved, { format: 'pptx-slide-viewer.settings', version: 1, data: { language: 'ja' } });
+    assert.deepEqual(saved, { format: 'pptx-review-canvas.settings', version: 1, data: { language: 'ja' } });
     assert.deepEqual(json(await postJson(`${second.url}api/language`, { language: 'en' })), { language: 'en' });
     assert.equal(json(await request(`${first.url}api/state`)).language, 'en', 'any viewer can change it');
     assert.equal(json(await postJson(`${second.url}api/language`, { language: 'JA' })).language, 'ja');
@@ -301,12 +301,12 @@ test('data written by the Japanese-only versions still opens: sketchbooks, draft
   const { registry, dataRoot, decks } = await setup();
   const sketchPath = path.join(sketchbooksDir(dataRoot), 'スケッチ 20240102-030405.sketch');
   await fs.mkdir(path.dirname(sketchPath), { recursive: true });
-  await fs.writeFile(sketchPath, `${JSON.stringify({ format: 'pptx-slide-viewer.sketchbook', version: 1, createdAt: 1704160000000 })}\n`);
+  await fs.writeFile(sketchPath, `${JSON.stringify({ format: 'pptx-review-canvas.sketchbook', version: 1, createdAt: 1704160000000 })}\n`);
   const records = new AnnotationStore(dataRoot);
   await fs.mkdir(records.dir, { recursive: true });
   const draft = (id, title, after) => ({ id, title, after, afterHash: '', strokes: [], comments: [], createdAt: 1704160000000, unread: true });
   await fs.writeFile(records.fileFor(sketchPath), JSON.stringify({
-    format: 'pptx-slide-viewer.annotations',
+    format: 'pptx-review-canvas.annotations',
     version: 1,
     data: { path: sketchPath, deckKey: 'a'.repeat(24), updatedAt: 1704160000000, draftSeq: 2, slides: {}, drafts: [draft('d00000000000a', '新しいスライド 1', 0), draft('d00000000000b', '新規スライド案 2', 1)] },
   }));
