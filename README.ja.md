@@ -83,7 +83,7 @@ copilot plugin marketplace add openjny/copilot-pptx-review-canvas
 copilot plugin install copilot-pptx-review-canvas@copilot-pptx-review-canvas
 ```
 
-VS Code では、[VS Code にインストール](https://vscode.dev/redirect?url=vscode%3A%2F%2Fchat-plugin%2Finstall%3Fsource%3Dopenjny%252Fcopilot-pptx-review-canvas%26plugin%3Dcopilot-pptx-review-canvas)を使います。または、Agent Customizations エディターで `openjny/copilot-pptx-review-canvas` をマーケットプレイスとして追加し、Browse の Canvases から Install を選びます。
+VS Code では、このリポジトリをマーケットプレイスとして追加し、そこからプラグインをインストールします。コマンドパレットで **Chat: Open Customizations** を実行し、**Browse** を選び、ソースのメニューから **Configure Marketplaces**、**Add Marketplace** の順に選んで `openjny/copilot-pptx-review-canvas` を入力します。**Browse** に戻り、ソースのメニューでこのマーケットプレイスを選んで、プラグインの **Install** を押します。
 
 インストールのあとは、新しいセッションを始めてください。キャンバスは、インストールのあとに始めたセッションにだけ表示されます。更新するには `copilot plugin update copilot-pptx-review-canvas@copilot-pptx-review-canvas` を実行します。
 
