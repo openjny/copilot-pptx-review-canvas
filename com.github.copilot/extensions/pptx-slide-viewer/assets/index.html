@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title data-i18n="app.title">PowerPoint viewer</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="main.js" type="module"></script>
+</head>
+<body>
+  <div class="app" id="app" data-phase="empty">
+    <header class="bar">
+      <div class="bar__heading">
+        <h1 id="deck-title" class="bar__title" data-i18n="app.title">PowerPoint viewer</h1>
+        <p id="deck-meta" class="bar__meta"></p>
+      </div>
+
+      <div id="ink" class="ink" role="toolbar" aria-label="Marks" data-i18n-aria-label="ink.toolbar" hidden>
+        <div class="seg" role="group" aria-label="Tool" data-i18n-aria-label="ink.tools">
+          <button type="button" class="ibtn" data-tool="select" aria-pressed="false" aria-label="Comment" title="Comment (C): click or drag to pick a spot, then write your comment" data-i18n-aria-label="ink.tool.select" data-i18n-title="ink.tool.selectTitle"><span data-icon="select"></span></button>
+          <button type="button" class="ibtn" data-tool="pen" aria-pressed="true" aria-label="Pen" title="Pen (P)" data-i18n-aria-label="ink.tool.pen" data-i18n-title="ink.tool.penTitle"><span data-icon="pen"></span></button>
+          <button type="button" class="ibtn" data-tool="highlighter" aria-pressed="false" aria-label="Highlighter" title="Highlighter (H)" data-i18n-aria-label="ink.tool.highlighter" data-i18n-title="ink.tool.highlighterTitle"><span data-icon="highlighter"></span></button>
+          <button type="button" class="ibtn" data-tool="eraser" aria-pressed="false" aria-label="Eraser" title="Eraser (E)" data-i18n-aria-label="ink.tool.eraser" data-i18n-title="ink.tool.eraserTitle"><span data-icon="eraser"></span></button>
+        </div>
+        <span class="swatches" role="group" aria-label="Color" data-i18n-aria-label="ink.colors">
+          <button type="button" class="swatch" data-color="#e5231b" aria-pressed="true" aria-label="Red" title="Red" data-i18n-aria-label="ink.color.red" data-i18n-title="ink.color.red"></button>
+          <button type="button" class="swatch" data-color="#1f6feb" aria-pressed="false" aria-label="Blue" title="Blue" data-i18n-aria-label="ink.color.blue" data-i18n-title="ink.color.blue"></button>
+          <button type="button" class="swatch" data-color="#1a7f37" aria-pressed="false" aria-label="Green" title="Green" data-i18n-aria-label="ink.color.green" data-i18n-title="ink.color.green"></button>
+          <button type="button" class="swatch" data-color="#1b1b1f" aria-pressed="false" aria-label="Black" title="Black" data-i18n-aria-label="ink.color.black" data-i18n-title="ink.color.black"></button>
+          <button type="button" class="swatch" data-color="#ffd400" aria-pressed="false" aria-label="Yellow" title="Yellow" data-i18n-aria-label="ink.color.yellow" data-i18n-title="ink.color.yellow"></button>
+        </span>
+        <div class="seg" role="group" aria-label="Line width" data-i18n-aria-label="ink.sizes">
+          <button type="button" class="ibtn ibtn--thin" data-size="thin" aria-pressed="false" aria-label="Thin line" title="Thin line" data-i18n-aria-label="ink.size.thin" data-i18n-title="ink.size.thin"><span data-icon="line-thin"></span></button>
+          <button type="button" class="ibtn ibtn--thin" data-size="medium" aria-pressed="true" aria-label="Medium line" title="Medium line" data-i18n-aria-label="ink.size.medium" data-i18n-title="ink.size.medium"><span data-icon="line-medium"></span></button>
+          <button type="button" class="ibtn ibtn--thin" data-size="thick" aria-pressed="false" aria-label="Thick line" title="Thick line" data-i18n-aria-label="ink.size.thick" data-i18n-title="ink.size.thick"><span data-icon="line-thick"></span></button>
+        </div>
+        <div class="seg" role="group" aria-label="Undo and redo" data-i18n-aria-label="ink.history">
+          <button type="button" class="ibtn" id="ink-undo" aria-label="Undo" title="Undo (Ctrl+Z)" data-i18n-aria-label="ink.undo" data-i18n-title="ink.undoTitle" disabled><span data-icon="undo"></span></button>
+          <button type="button" class="ibtn" id="ink-redo" aria-label="Redo" title="Redo (Ctrl+Y)" data-i18n-aria-label="ink.redo" data-i18n-title="ink.redoTitle" disabled><span data-icon="redo"></span></button>
+        </div>
+        <button type="button" class="ibtn" id="ink-clear" aria-label="Clear all marks" title="Clear all marks on the slide you’re viewing (the slide itself stays, and you can undo)" data-i18n-aria-label="ink.clear" data-i18n-title="ink.clearTitle" disabled><span data-icon="trash"></span></button>
+        <button type="button" class="ibtn ibtn--state" id="ink-toggle" aria-pressed="true" aria-label="Show marks" title="Show or hide marks (M)" data-i18n-aria-label="ink.toggle" data-i18n-title="ink.toggleTitle">
+          <span class="when-on" data-icon="eye"></span><span class="when-off" data-icon="eye-off"></span>
+        </button>
+        <span id="ink-count" class="sr-only"></span>
+      </div>
+
+      <div class="bar__actions" role="toolbar" aria-label="File" data-i18n-aria-label="toolbar.file">
+        <button type="button" id="btn-open" class="ibtn" aria-expanded="false" aria-controls="open-panel" aria-label="Open a deck" title="Open a deck" data-i18n-aria-label="toolbar.open" data-i18n-title="toolbar.open"><span data-icon="folder"></span></button>
+        <button type="button" id="btn-new" class="ibtn" aria-expanded="false" aria-controls="open-panel" aria-label="Create a new deck" title="Create a new deck" data-i18n-aria-label="toolbar.new" data-i18n-title="toolbar.new"><span data-icon="file-plus"></span></button>
+        <button type="button" id="btn-refresh" class="ibtn" aria-label="Re-render" title="Render again from PowerPoint" data-i18n-aria-label="toolbar.refresh" data-i18n-title="toolbar.refreshTitle"><span data-icon="refresh"></span></button>
+        <button type="button" id="btn-external" class="ibtn" aria-label="Open in PowerPoint" title="Open in PowerPoint" data-i18n-aria-label="toolbar.external" data-i18n-title="toolbar.external"><span data-icon="external"></span></button>
+        <button type="button" id="btn-fullscreen" class="ibtn" aria-label="Full screen" title="Full screen (F)" data-i18n-aria-label="toolbar.fullscreen" data-i18n-title="toolbar.fullscreenTitle"><span data-icon="fullscreen"></span></button>
+        <button type="button" id="btn-comments" class="ibtn ibtn--count" aria-pressed="false" aria-controls="comments" aria-label="Comments" title="Show comments" data-i18n-aria-label="comments.title" data-i18n-title="comments.show"><span data-icon="comment"></span><span id="comments-count" class="ibtn__count" hidden></span></button>
+        <button type="button" id="btn-notes" class="ibtn" aria-pressed="false" aria-label="Notes" title="Show speaker notes (N)" data-i18n-aria-label="toolbar.notes" data-i18n-title="toolbar.notesTitle"><span data-icon="notes"></span></button>
+        <button type="button" id="btn-help" class="ibtn" aria-expanded="false" aria-controls="help" aria-label="Help" title="Help" data-i18n-aria-label="toolbar.help" data-i18n-title="toolbar.help"><span data-icon="help"></span></button>
+      </div>
+    </header>
+
+    <section id="help" class="help" aria-labelledby="help-title" hidden>
+      <div class="help__head">
+        <h2 id="help-title" class="help__title" data-i18n="help.title">Help</h2>
+        <div class="lang" role="group" aria-label="Language" data-i18n-aria-label="help.language">
+          <button type="button" class="lang__btn" data-lang="en" lang="en" aria-pressed="true">English</button>
+          <button type="button" class="lang__btn" data-lang="ja" lang="ja" aria-pressed="false">日本語</button>
+        </div>
+      </div>
+      <ul class="help__list">
+        <li><strong data-i18n="help.comment.lead">Add comments</strong><span data-i18n="help.comment.text">Use the comment tool, to the left of the pen: click a slide to comment on that spot, or drag to comment on an area. Write in the panel on the right and press “Add”. To comment on the whole slide, use “Add a comment on the whole slide” in the panel. The agent reads comments the same way it reads marks.</span></li>
+        <li><strong data-i18n="help.mark.lead">Draw, then tell the agent in chat</strong><span data-i18n="help.mark.text">Draw with the pen or highlighter, then send your instructions in the chat. The agent reads your marks and fixes the deck.</span></li>
+        <li><strong data-i18n="help.add.lead">Add slides</strong><span data-i18n="help.add.text">In the slide list below, hover between two slides to show “+”. Click it to put a blank new slide there. A new slide does not go into the PowerPoint file until the agent turns it into a real slide.</span></li>
+        <li><strong data-i18n="help.move.lead">Reorder and delete</strong><span data-i18n="help.move.text">Drag slides in the list to reorder them. Hover over a slide and click “×” to delete it. Deleting happens right away, and the Undo button (Ctrl+Z) brings the slide back. Both change the PowerPoint file; the file as it was before is kept as a backup.</span></li>
+        <li><strong data-i18n="help.sketch.lead">Start from a blank page</strong><span data-i18n="help.sketch.text">You don’t need a PowerPoint file. Use “Open a deck” to start a blank sketchbook.</span></li>
+      </ul>
+      <dl class="help__keys">
+        <dt><kbd>P</kbd> <kbd>H</kbd> <kbd>E</kbd> <kbd>C</kbd></dt><dd data-i18n="help.keys.tools">Pen, highlighter, eraser, comment</dd>
+        <dt><kbd>Ctrl</kbd>+<kbd>Z</kbd> / <kbd>Y</kbd></dt><dd data-i18n="help.keys.undoRedo">Undo, redo</dd>
+        <dt><kbd>M</kbd></dt><dd data-i18n="help.keys.toggleMarks">Show or hide marks</dd>
+        <dt><kbd>←</kbd> <kbd>→</kbd></dt><dd data-i18n="help.keys.step">Previous or next slide</dd>
+        <dt><kbd>Alt</kbd>+<kbd>←</kbd> <kbd>→</kbd></dt><dd data-i18n="help.keys.moveSlide">Move the current slide earlier or later</dd>
+        <dt><kbd>Ctrl</kbd>+<kbd>M</kbd></dt><dd data-i18n="help.keys.addSlide">Add a new slide after the current one</dd>
+        <dt><kbd>Delete</kbd></dt><dd data-i18n="help.keys.delete">Delete the current slide (happens right away; Ctrl+Z brings it back)</dd>
+        <dt><kbd>N</kbd> / <kbd>F</kbd></dt><dd data-i18n="help.keys.notesFullscreen">Notes, full screen</dd>
+      </dl>
+    </section>
+
+    <section id="open-panel" class="open" aria-label="Open or create a deck" data-i18n-aria-label="open.panel" hidden>
+      <form id="open-form" class="open__form">
+        <label for="open-path" class="open__label" data-i18n="open.pathLabel">PowerPoint file path</label>
+        <div class="open__row">
+          <input id="open-path" name="path" class="open__input" type="text" autocomplete="off" spellcheck="false" placeholder="C:\Users\...\deck.pptx" required>
+          <button type="submit" class="btn btn--primary" data-i18n="open.submit">Open</button>
+        </div>
+      </form>
+      <form id="new-form" class="open__form open__form--new">
+        <label for="new-path" class="open__label" data-i18n="toolbar.new">Create a new deck</label>
+        <div class="open__row">
+          <input id="new-path" name="path" class="open__input" type="text" autocomplete="off" spellcheck="false" placeholder="Save location (.pptx path)" data-i18n-placeholder="open.newPathPlaceholder" aria-describedby="new-help" required>
+          <button type="submit" id="new-submit" class="btn" data-i18n="open.createSubmit">Create and open</button>
+        </div>
+        <div class="open__row open__row--sub">
+          <label for="new-template" class="sr-only" data-i18n="open.templateLabel">Template (optional)</label>
+          <input id="new-template" name="template" class="open__input" type="text" autocomplete="off" spellcheck="false" placeholder="Template path (optional; .potx or .pptx)" data-i18n-placeholder="open.templatePlaceholder" aria-describedby="new-help">
+        </div>
+        <p id="new-help" class="open__hint" data-i18n="open.newHint">Creates a .pptx with one slide. It never overwrites an existing file with the same name.</p>
+      </form>
+      <form id="sketch-form" class="open__form open__form--sketch">
+        <label for="sketch-name" class="open__label" data-i18n="open.sketchLabel">Or start from blank pages (sketchbook)</label>
+        <div class="open__row">
+          <input id="sketch-name" name="name" class="open__input" type="text" autocomplete="off" maxlength="60" placeholder="Name (optional)" data-i18n-placeholder="open.sketchPlaceholder" aria-describedby="sketch-help">
+          <button type="submit" class="btn" data-i18n="open.sketchSubmit">Start a sketchbook</button>
+        </div>
+        <p id="sketch-help" class="open__hint" data-i18n="open.sketchHint">Draw on blank pages without a PowerPoint file. Using the same name picks up where you left off.</p>
+      </form>
+      <div id="recent" class="recent" hidden>
+        <h2 class="recent__title" data-i18n="open.recent">Recently opened</h2>
+        <ul id="recent-list" class="recent__list"></ul>
+      </div>
+    </section>
+
+    <div id="banner" class="banner" role="alert" hidden></div>
+    <div id="notice" class="notice" role="status" hidden>
+      <span id="notice-text" class="notice__text"></span>
+      <button type="button" id="notice-close" class="notice__close" aria-label="Dismiss notice" data-i18n-aria-label="notice.close"><span data-icon="close"></span></button>
+    </div>
+    <div id="status" class="status" role="status" aria-live="polite" hidden>
+      <progress id="progress" class="status__bar" max="1" value="0"></progress>
+      <span id="status-text"></span>
+    </div>
+    <p id="slide-live" class="sr-only" role="status" aria-live="polite"></p>
+
+    <main class="layout" id="layout">
+      <section class="stage" id="stage" aria-label="Slide" data-i18n-aria-label="stage.label">
+        <figure class="stage__figure">
+          <div id="slide-box" class="slidebox" hidden>
+            <img id="slide-img" class="stage__img" alt="">
+            <canvas id="ink-canvas" class="ink-canvas" aria-hidden="true" hidden></canvas>
+            <div id="comment-layer" class="comment-layer" role="group" aria-label="Comment positions" data-i18n-aria-label="comments.positions" hidden></div>
+          </div>
+        </figure>
+        <p id="stage-empty" class="stage__empty"></p>
+      </section>
+
+      <section id="notes" class="notes" aria-labelledby="notes-heading" hidden>
+        <h2 id="notes-heading" class="notes__title" data-i18n="notes.title">Speaker notes</h2>
+        <div id="notes-body" class="notes__body"></div>
+      </section>
+
+      <aside id="comments" class="comments" aria-labelledby="comments-title" hidden>
+        <header class="comments__head">
+          <h2 id="comments-title" class="comments__title" data-i18n="comments.title">Comments</h2>
+          <button type="button" id="comments-close" class="ibtn" aria-label="Close comments" title="Close" data-i18n-aria-label="comments.close" data-i18n-title="comments.closeTitle"><span data-icon="close"></span></button>
+        </header>
+        <ul id="comments-list" class="comments__list"></ul>
+        <footer class="comments__foot">
+          <button type="button" id="comments-add" class="btn" data-i18n="comments.addPage">Add a comment on the whole slide</button>
+        </footer>
+      </aside>
+
+      <nav class="rail" id="rail" aria-label="Slide list" data-i18n-aria-label="rail.label">
+        <ol id="thumbs" class="thumbs"></ol>
+      </nav>
+    </main>
+  </div>
+</body>
+</html>
