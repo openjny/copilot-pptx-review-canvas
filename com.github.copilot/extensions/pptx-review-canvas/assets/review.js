@@ -1,15 +1,14 @@
-// The "Submit review" button and the small panel it opens: the user's way of saying "I am done, now make the changes". The server
-// sends the agent a message (`api/review/submit`); this module only shows when that is possible and collects the optional note.
+// The "Submit review" button: the user's way of saying "I am done, now make the changes". Pressing it sends the review to the agent at once
+// (`api/review/submit`), with nothing in between. This module only shows when that is possible and what the button says about it.
 //
-// `elements`: `button` (with `buttonIcon` and `buttonLabel` inside it), `panel`, `summary`, `note`, `cancel`, `send`.
+// `elements`: `button` (with `buttonIcon` and `buttonLabel` inside it).
 // The state it reads is `state.review`: `{ canSubmit, submitted, slides, drafts }`.
 
 import { icon } from './icons.js';
 import { t, tn } from './i18n.js';
 
-export function createReview({ elements, getState, post, onError, announce, onOpen = () => {} }) {
-  const { button, buttonIcon, buttonLabel, panel, summary, note, cancel, send } = elements;
-  let open = false;
+export function createReview({ elements, getState, post, onError, announce }) {
+  const { button, buttonIcon, buttonLabel } = elements;
   let sending = false;
 
   const reviewOf = () => getState()?.review ?? null;
@@ -20,6 +19,7 @@ export function createReview({ elements, getState, post, onError, announce, onOp
     buttonIcon.innerHTML = icon(name);
   }
 
+  /** What will be sent, in words: "2 slides with feedback · 1 new slide". It is in the tooltip, since there is no confirmation to read it in. */
   function summaryText(review) {
     const parts = [];
     if (review.slides.length) parts.push(tn('review.summarySlides', review.slides.length));
@@ -27,76 +27,35 @@ export function createReview({ elements, getState, post, onError, announce, onOp
     return parts.join(t('review.summaryJoin'));
   }
 
-  /** Redraws the button and the panel from the state. Called after every render, and after the language changes. */
+  /** Redraws the button from the state. Called after every render, and after the language changes. */
   function sync() {
     const review = reviewOf();
     const canSubmit = Boolean(review?.canSubmit);
     const submitted = Boolean(review?.submitted);
-    button.disabled = !canSubmit;
-    button.classList.toggle('is-done', submitted);
-    setIcon(submitted ? 'check' : 'send');
-    buttonLabel.textContent = submitted ? t('review.submitted') : t('review.submit');
-    button.title = submitted ? t('review.submittedTitle') : canSubmit ? t('review.submitTitle') : t('review.nothingTitle');
-    summary.textContent = review ? summaryText(review) : '';
-    send.disabled = !canSubmit || sending;
-    // The marks were read (or removed) while the panel was open, so there is nothing to submit any more.
-    if (open && !canSubmit && !sending) setOpen(false);
-  }
-
-  function setOpen(next) {
-    if (open === next) return;
-    open = next;
-    panel.hidden = !open;
-    button.setAttribute('aria-expanded', String(open));
-    if (open) {
-      // The bar wraps in a narrow window, so the button is not always in the first row: put the panel right under it.
-      panel.style.top = `${Math.round(button.getBoundingClientRect().bottom + 6)}px`;
-      onOpen();
-      note.focus();
-    }
+    button.disabled = !canSubmit || sending;
+    button.classList.toggle('is-done', submitted && !sending);
+    setIcon(submitted && !sending ? 'check' : 'send');
+    buttonLabel.textContent = sending ? t('review.sending') : submitted ? t('review.submitted') : t('review.submit');
+    const summary = review ? summaryText(review) : '';
+    button.title = submitted ? t('review.submittedTitle') : canSubmit ? `${t('review.submitTitle')}${summary ? `\n${summary}` : ''}` : t('review.nothingTitle');
   }
 
   async function submit() {
     if (sending || !reviewOf()?.canSubmit) return;
     sending = true;
-    send.disabled = true;
-    send.textContent = t('review.sending');
+    sync();
     try {
-      await post('api/review/submit', { note: note.value.trim() });
-      note.value = '';
-      setOpen(false);
+      await post('api/review/submit');
       announce(t('review.done'));
     } catch (error) {
       onError(error);
     } finally {
       sending = false;
-      send.textContent = t('review.send');
       sync();
     }
   }
 
-  button.addEventListener('click', () => {
-    if (!button.disabled) setOpen(!open);
-  });
-  cancel.addEventListener('click', () => {
-    setOpen(false);
-    button.focus();
-  });
-  send.addEventListener('click', submit);
-  panel.addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') {
-      setOpen(false);
-      button.focus();
-      event.preventDefault();
-    } else if (event.key === 'Enter' && (event.ctrlKey || event.metaKey) && event.target === note) {
-      submit();
-      event.preventDefault();
-    }
-  });
-  document.addEventListener('click', (event) => {
-    if (!open || !(event.target instanceof Node)) return;
-    if (!panel.contains(event.target) && !button.contains(event.target)) setOpen(false);
-  });
+  button.addEventListener('click', submit);
 
-  return { sync, close: () => setOpen(false), isOpen: () => open };
+  return { sync };
 }

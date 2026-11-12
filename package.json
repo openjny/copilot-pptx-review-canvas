@@ -1,6 +1,6 @@
 {
   "name": "copilot-pptx-review-canvas",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
   "description": "A Copilot canvas for reviewing PowerPoint decks with the agent.",
   "type": "module",

@@ -5,6 +5,7 @@ import fsp from 'node:fs/promises';
 import http from 'node:http';
 import path from 'node:path';
 import { validateStroke } from './annotations.mjs';
+import { commentKind } from './comments.mjs';
 import { pad, resolveDeckSource } from './deck-cache.mjs';
 import { ViewerError, isAbortError } from './errors.mjs';
 import { UndoJournal } from './history.mjs';
@@ -16,7 +17,7 @@ import { commitRewrite, isReorderableExtension, reorderSlidesInFile } from './pp
 import { whitePng } from './png.mjs';
 import { compositeAnnotations } from './raster.mjs';
 import { SKETCHBOOK_EXTENSION, createSketchbook, resolveSketchbook } from './sketchbook.mjs';
-import { CANVAS_ID, samePath } from './store.mjs';
+import { CANVAS_ID, THEMES, isTheme, samePath } from './store.mjs';
 
 const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '[::1]']);
 const MAX_BODY_BYTES = 16 * 1024;
@@ -36,13 +37,16 @@ const ASSET_TYPES = {
   'comments.js': 'text/javascript; charset=utf-8',
   'resize.js': 'text/javascript; charset=utf-8',
   'review.js': 'text/javascript; charset=utf-8',
+  'bubble.js': 'text/javascript; charset=utf-8',
+  'place.js': 'text/javascript; charset=utf-8',
+  'menu.js': 'text/javascript; charset=utf-8',
+  'shape.js': 'text/javascript; charset=utf-8',
   'i18n.js': 'text/javascript; charset=utf-8',
   'locales/en.js': 'text/javascript; charset=utf-8',
   'locales/ja.js': 'text/javascript; charset=utf-8',
 };
 
-const CONFLICT_CODES = new Set(['no_deck', 'not_ready', 'busy', 'file_changed', 'file_locked', 'file_exists', 'history_changed', 'history_conflict', 'nothing_to_submit', 'already_submitted', 'agent_unavailable']);
-const MAX_REVIEW_NOTE = 2000;
+const CONFLICT_CODES = new Set(['no_deck', 'not_ready', 'busy', 'file_changed', 'file_locked', 'file_exists', 'history_changed', 'history_conflict', 'nothing_to_submit', 'already_submitted', 'agent_unavailable', 'comment_not_editable']);
 const UNDO_FILE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 
 /** An error that answers a request with a given status; it is a ViewerError, so its text is rendered in the current language like any other. */
@@ -111,6 +115,8 @@ function targetOf(body) {
   return body.draft;
 }
 const isSketchbook = (deck) => deck?.kind === 'sketchbook';
+/** The threads that are still open, and how many are resolved. Resolved ones are done with: the agent does not need to read them again. */
+const splitThreads = (comments) => ({ open: comments.filter((comment) => !comment.resolved), resolved: comments.filter((comment) => comment.resolved).length });
 const isReorderable = (deck) => Boolean(deck) && !isSketchbook(deck) && isReorderableExtension(path.extname(deck.source.path));
 const deckName = (deck) => path.basename(deck.source.path, isSketchbook(deck) ? SKETCHBOOK_EXTENSION : undefined);
 
@@ -118,9 +124,9 @@ const deckName = (deck) => path.basename(deck.source.path, isSketchbook(deck) ? 
 export class ViewerInstance {
   /**
    * `sendToAgent({ prompt, displayPrompt })` sends a message to the agent (without it a review cannot be submitted);
-   * `getPreferences()` and `changeCommentsWidth(width)` read and save the user's preferences, which the registry owns.
+   * `getPreferences()`, `changeCommentsWidth(width)`, `changeRailHeight(height)` and `changeTheme(theme)` read and save the user's preferences, which the registry owns.
    */
-  constructor({ instanceId, deckCache, positions, annotationStore, assetsDir, baseDir, log = () => {}, watchIntervalMs = WATCH_INTERVAL_MS, creator = createPresentationWithPowerPoint, i18n = createI18n(), changeLanguage, sendToAgent, getPreferences, changeCommentsWidth }) {
+  constructor({ instanceId, deckCache, positions, annotationStore, assetsDir, baseDir, log = () => {}, watchIntervalMs = WATCH_INTERVAL_MS, creator = createPresentationWithPowerPoint, i18n = createI18n(), changeLanguage, sendToAgent, getPreferences, changeCommentsWidth, changeRailHeight, changeTheme }) {
     this.instanceId = instanceId;
     this.deckCache = deckCache;
     this.positions = positions;
@@ -132,8 +138,10 @@ export class ViewerInstance {
     this.i18n = i18n;
     this.t = (key, params) => this.i18n.t(key, params);
     this.sendToAgent = sendToAgent;
-    this.getPreferences = getPreferences ?? (() => ({ commentsWidth: null }));
+    this.getPreferences = getPreferences ?? (() => ({ commentsWidth: null, railHeight: null, theme: 'auto' }));
     this.changeCommentsWidth = changeCommentsWidth ?? (async (width) => width);
+    this.changeRailHeight = changeRailHeight ?? (async (height) => height);
+    this.changeTheme = changeTheme ?? (async (theme) => theme);
     // The version of the marks that was last submitted, so the same marks are not submitted twice; any change to them makes a new version.
     this._submittedVersion = null;
     // Saving the language and telling every viewer is the registry's job; on its own, a viewer only switches itself.
@@ -254,6 +262,8 @@ export class ViewerInstance {
       rev: this._rev,
       language: this.i18n.language,
       commentsWidth: this.getPreferences().commentsWidth ?? null,
+      railHeight: this.getPreferences().railHeight ?? null,
+      theme: this.getPreferences().theme ?? 'auto',
       phase,
       current,
       draft,
@@ -716,11 +726,14 @@ export class ViewerInstance {
     return { version: this._annotationInfo().version, ...(typeof target === 'string' ? { draft: target } : { slide: target }), comments: book.comments(target) };
   }
 
-  /** Adds a comment about the whole page (no `anchor`), or about a point or an area of it (`anchor`: `{ x, y, w, h }`, fractions of the page). */
+  /**
+   * Adds a comment about the whole page (no `anchor`), or about a point or an area of it (`anchor`: `{ x, y, w, h }`, fractions of the page).
+   * This is the user writing it in the page, so it is always the user's.
+   */
   addComment(target, { text, anchor } = {}) {
     const book = this._requireBook();
     this._assertTarget(target);
-    const comment = book.addComment(target, { text, anchor });
+    const comment = book.addComment(target, { text, anchor, author: 'user' });
     this._afterAnnotationChange(book);
     return { version: this._annotationInfo().version, comment };
   }
@@ -732,6 +745,66 @@ export class ViewerInstance {
     const updated = book.updateComment(target, id, text);
     if (updated) this._afterAnnotationChange(book);
     return { version: this._annotationInfo().version, comment: updated ?? book.comments(target).find((comment) => comment.id === id) };
+  }
+
+  /** The user replying in a thread. */
+  replyComment(target, id, text) {
+    const book = this._requireBook();
+    this._assertTarget(target);
+    if (typeof id !== 'string') throw new ViewerError('invalid_input', 'input.idString');
+    const { comment, reply } = book.replyComment(target, id, { text, author: 'user' });
+    this._afterAnnotationChange(book);
+    return { version: this._annotationInfo().version, comment, reply };
+  }
+
+  /** The user resolving a thread, or opening it again. */
+  resolveComment(target, id, resolved) {
+    const book = this._requireBook();
+    this._assertTarget(target);
+    if (typeof id !== 'string') throw new ViewerError('invalid_input', 'input.idString');
+    if (typeof resolved !== 'boolean') throw new ViewerError('invalid_input', 'input.resolvedBoolean');
+    const updated = book.setResolved(target, id, resolved);
+    if (updated) this._afterAnnotationChange(book);
+    return { version: this._annotationInfo().version, comment: updated ?? book.comments(target).find((comment) => comment.id === id) };
+  }
+
+  /**
+   * The agent starting a thread on a slide (`slide`) or a draft page (`draft`): about the whole page, or at `anchor` (`{ x, y, w, h }`
+   * in percent of the page), or around the shape called `shape` (a name from `onShapes`). It is not "unread": the agent wrote it.
+   */
+  async addAgentComment({ slide, draft, text, anchor, shape } = {}) {
+    const book = this._requireBook();
+    const deck = this._requireDeck();
+    if ((slide === undefined) === (draft === undefined)) throw new ViewerError('invalid_input', 'input.slideOrDraft');
+    const target = draft ?? slide;
+    this._assertTarget(target);
+    if (anchor !== undefined && shape !== undefined) throw new ViewerError('invalid_input', 'input.anchorOrShape');
+    let place = null;
+    if (shape !== undefined) {
+      if (typeof shape !== 'string' || !shape) throw new ViewerError('invalid_input', 'input.shapeString');
+      if (draft !== undefined) throw new ViewerError('invalid_input', 'input.shapeOnSlide');
+      const found = ((await this._shapesFor(deck.key))?.[String(slide)] ?? []).find((entry) => entry.name === shape);
+      if (!found) throw new ViewerError('invalid_input', 'error.shapeNotFound', { shape });
+      place = { x: found.x / deck.slideWidth, y: found.y / deck.slideHeight, w: found.w / deck.slideWidth, h: found.h / deck.slideHeight };
+    } else if (anchor !== undefined && anchor !== null) {
+      if (typeof anchor !== 'object' || Array.isArray(anchor) || ![anchor.x, anchor.y].every(Number.isFinite)) throw new ViewerError('invalid_input', 'input.anchorPercent');
+      place = { x: anchor.x / 100, y: anchor.y / 100, w: (anchor.w ?? 0) / 100, h: (anchor.h ?? 0) / 100 };
+    }
+    const comment = book.addComment(target, { text, anchor: place, author: 'agent' });
+    this._afterAnnotationChange(book);
+    return { id: comment.id, ...(typeof target === 'string' ? { draft: target } : { slide: target }), kind: commentKind(comment) };
+  }
+
+  /** The agent answering in a thread (`id` is the comment's id from get_annotations). */
+  replyAsAgent({ id, text } = {}) {
+    const book = this._requireBook();
+    this._requireDeck();
+    if (typeof id !== 'string') throw new ViewerError('invalid_input', 'input.idString');
+    const found = book.findComment(id);
+    if (!found) throw new ViewerError('comment_not_found', 'error.commentNotFound');
+    const { reply } = book.replyComment(found.target, id, { text, author: 'agent' });
+    this._afterAnnotationChange(book);
+    return { id: reply.id, comment: id, ...(typeof found.target === 'string' ? { draft: found.target } : { slide: found.target }), replies: book.findComment(id).comment.replies.length };
   }
 
   /** The user deleting a comment. It can be undone (see `historyStep`). */
@@ -832,14 +905,14 @@ export class ViewerInstance {
   }
 
   /** The message that asks the agent to act on the review: what it says to the agent, and the shorter text the chat shows in its place. */
-  _reviewMessage(unread, note) {
+  _reviewMessage(unread) {
     const scope = [];
     if (unread.slides.length) scope.push(this.t('unread.slides', { list: unread.slides }));
     if (unread.drafts.length) scope.push(this.t('unread.drafts', { count: unread.drafts.length }));
     const params = { deck: unread.deck, canvasId: CANVAS_ID, instanceId: this.instanceId, scope: scope.join(' / ') };
     return {
-      prompt: [this.t('submit.prompt', params), note && this.t('submit.note', { note }), this.t('submit.outro')].filter(Boolean).join('\n\n'),
-      displayPrompt: [this.t('submit.display', params), note].filter(Boolean).join('\n'),
+      prompt: [this.t('submit.prompt', params), this.t('submit.outro')].join('\n\n'),
+      displayPrompt: this.t('submit.display', params),
     };
   }
 
@@ -848,18 +921,15 @@ export class ViewerInstance {
    * and to make the changes. The message is queued behind whatever the agent is doing. Only marks the agent has not read can be
    * submitted, and the same marks only once.
    */
-  async submitReview({ note } = {}) {
+  async submitReview() {
     if (!this.sendToAgent) throw new ViewerError('agent_unavailable', 'error.agentUnavailable');
     this._requireBook();
-    if (note !== undefined && typeof note !== 'string') throw new ViewerError('invalid_input', 'input.noteString');
-    const text = (note ?? '').trim();
-    if (text.length > MAX_REVIEW_NOTE) throw new ViewerError('invalid_input', 'input.noteTooLong', { max: MAX_REVIEW_NOTE });
     const unread = this.unreadAnnotations();
     if (!unread) throw new ViewerError('nothing_to_submit', 'error.nothingToSubmit');
     const version = this._annotationInfo().version;
     if (this._submittedVersion === version) throw new ViewerError('already_submitted', 'error.alreadySubmitted');
     try {
-      await this.sendToAgent(this._reviewMessage(unread, text));
+      await this.sendToAgent(this._reviewMessage(unread));
     } catch (error) {
       throw new ViewerError('agent_unavailable', 'error.agentSendFailed', { detail: error?.message ?? String(error) });
     }
@@ -903,13 +973,15 @@ export class ViewerInstance {
       const meta = deck.slides[n - 1];
       const slideShapes = shapes?.[String(n)];
       const analysis = analyzeSlide({ strokes, aspect, shapes: slideShapes, slideW: deck.slideWidth, slideH: deck.slideHeight, t: this.t });
-      const notes = analyzeComments({ comments: book.comments(n), aspect, shapes: slideShapes, slideW: deck.slideWidth, slideH: deck.slideHeight, t: this.t });
+      const { open, resolved } = splitThreads(book.comments(n));
+      const notes = analyzeComments({ comments: open, aspect, shapes: slideShapes, slideW: deck.slideWidth, slideH: deck.slideHeight, t: this.t });
       slides.push({
         slide: n,
         title: this._pageTitle(deck, meta),
         strokeCount: strokes.length,
         marks: analysis.marks,
         ...(notes.comments.length ? { commentCount: notes.comments.length, comments: notes.comments } : {}),
+        ...(resolved ? { resolvedCommentCount: resolved } : {}),
         ...(meta.notes ? { notes: meta.notes } : {}),
       });
       if (includeImages && (strokes.length || notes.badges.length) && images.length < maxImages) {
@@ -921,7 +993,8 @@ export class ViewerInstance {
     for (const entry of draftTargets) {
       const strokes = book.strokes(entry.id);
       const analysis = analyzeSlide({ strokes, aspect, shapes: null, slideW: deck.slideWidth, slideH: deck.slideHeight, t: this.t });
-      const notes = analyzeComments({ comments: book.comments(entry.id), aspect, shapes: null, slideW: deck.slideWidth, slideH: deck.slideHeight, t: this.t });
+      const { open, resolved } = splitThreads(book.comments(entry.id));
+      const notes = analyzeComments({ comments: open, aspect, shapes: null, slideW: deck.slideWidth, slideH: deck.slideHeight, t: this.t });
       const followed = entry.after > 0 ? deck.slides[entry.after - 1] : null;
       draftPages.push({
         id: entry.id,
@@ -931,6 +1004,7 @@ export class ViewerInstance {
         strokeCount: strokes.length,
         marks: analysis.marks,
         ...(notes.comments.length ? { commentCount: notes.comments.length, comments: notes.comments } : {}),
+        ...(resolved ? { resolvedCommentCount: resolved } : {}),
       });
       if (includeImages && (strokes.length || notes.badges.length) && images.length < maxImages) {
         images.push({ draft: entry.id, title: entry.title, after: entry.after, kind: 'annotated', data: compositeAnnotations(this._blankPage(deck), strokes, analysis.badges, notes) });
@@ -1188,6 +1262,14 @@ export class ViewerInstance {
       const body = await readJsonBody(req);
       return sendJson(res, 200, this.updateComment(targetOf(body), body.id, body.text));
     }
+    if (pathname === '/api/comments/reply' && method === 'POST') {
+      const body = await readJsonBody(req);
+      return sendJson(res, 200, this.replyComment(targetOf(body), body.id, body.text));
+    }
+    if (pathname === '/api/comments/resolve' && method === 'POST') {
+      const body = await readJsonBody(req);
+      return sendJson(res, 200, this.resolveComment(targetOf(body), body.id, body.resolved));
+    }
     if (pathname === '/api/comments/remove' && method === 'POST') {
       const body = await readJsonBody(req);
       return sendJson(res, 200, this.removeComment(targetOf(body), body.id));
@@ -1267,9 +1349,18 @@ export class ViewerInstance {
       const body = await readJsonBody(req);
       return sendJson(res, 200, { width: await this.changeCommentsWidth(body.width ?? null) });
     }
-    if (pathname === '/api/review/submit' && method === 'POST') {
+    if (pathname === '/api/rail-height' && method === 'POST') {
       const body = await readJsonBody(req);
-      return sendJson(res, 200, await this.submitReview({ note: body.note }));
+      return sendJson(res, 200, { height: await this.changeRailHeight(body.height ?? null) });
+    }
+    if (pathname === '/api/theme' && method === 'POST') {
+      const body = await readJsonBody(req);
+      if (!isTheme(body.theme)) throw new HttpError(400, 'invalid_input', 'input.themeInvalid', { themes: THEMES });
+      return sendJson(res, 200, { theme: await this.changeTheme(body.theme) });
+    }
+    if (pathname === '/api/review/submit' && method === 'POST') {
+      await readJsonBody(req);
+      return sendJson(res, 200, await this.submitReview());
     }
     throw new HttpError(404, 'not_found', 'http.notFound');
   }

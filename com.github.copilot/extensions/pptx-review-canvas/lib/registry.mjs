@@ -5,7 +5,7 @@ import { ViewerError } from './errors.mjs';
 import { DEFAULT_LANGUAGE, SUPPORTED_LANGUAGES, createI18n, normalizeLanguage } from './i18n.mjs';
 import { createPresentationWithPowerPoint } from './new-deck.mjs';
 import { renderWithPowerPoint } from './renderer.mjs';
-import { COMMENTS_WIDTH_LIMITS, PositionStore, SettingsStore, dataRootFor, isCommentsWidth } from './store.mjs';
+import { COMMENTS_WIDTH_LIMITS, PositionStore, RAIL_HEIGHT_LIMITS, SettingsStore, THEMES, dataRootFor, isCommentsWidth, isRailHeight, isTheme } from './store.mjs';
 import { ViewerInstance } from './viewer-instance.mjs';
 
 const ASSETS_DIR = fileURLToPath(new URL('../assets/', import.meta.url));
@@ -20,7 +20,7 @@ export class ViewerRegistry {
     this.watchIntervalMs = watchIntervalMs;
     this.env = env;
     this.sendToAgent = sendToAgent;
-    this.preferences = { commentsWidth: null };
+    this.preferences = { commentsWidth: null, railHeight: null, theme: 'auto' };
     this.i18n = createI18n({ language: normalizeLanguage(env.PPTX_CANVAS_LANG) ?? DEFAULT_LANGUAGE });
     this.settings = new SettingsStore(root, { log, i18n: this.i18n });
     this.deckCache = new DeckCache({ root, renderer, log, i18n: this.i18n });
@@ -32,14 +32,16 @@ export class ViewerRegistry {
   }
 
   /**
-   * Settles the saved preferences: the language the user saved (else PPTX_CANVAS_LANG, else English) and the width of the comments
-   * pane. Safe to call repeatedly; `ensure` and `setLanguage` wait for it, and extension.mjs awaits it before it registers the canvas
-   * (whose name is in that language).
+   * Settles the saved preferences: the language the user saved (else PPTX_CANVAS_LANG, else English), the width of the comments pane and
+   * the height of the strip of thumbnails. Safe to call repeatedly; `ensure` and `setLanguage` wait for it, and extension.mjs awaits it
+   * before it registers the canvas (whose name is in that language).
    */
   ready() {
-    this._ready ??= this.settings.load().then(({ language, commentsWidth }) => {
+    this._ready ??= this.settings.load().then(({ language, commentsWidth, railHeight, theme }) => {
       if (language) this.i18n.setLanguage(language);
       this.preferences.commentsWidth = commentsWidth;
+      this.preferences.railHeight = railHeight;
+      this.preferences.theme = theme ?? 'auto';
     });
     return this._ready;
   }
@@ -66,6 +68,26 @@ export class ViewerRegistry {
     await this.ready();
     this.preferences.commentsWidth = value;
     await this.settings.save({ commentsWidth: value }).catch((error) => this.log(this.i18n.t('log.settingsSaveFailed', { detail: error.message })));
+    return value;
+  }
+
+  /** Saves the height of the strip of thumbnails (null goes back to the default). Viewers read it when they open, so none is told. */
+  async setRailHeight(value) {
+    if (value !== null && !isRailHeight(value)) throw new ViewerError('invalid_input', 'input.railHeight', RAIL_HEIGHT_LIMITS);
+    await this.ready();
+    this.preferences.railHeight = value;
+    await this.settings.save({ railHeight: value }).catch((error) => this.log(this.i18n.t('log.settingsSaveFailed', { detail: error.message })));
+    return value;
+  }
+
+  /** Saves and applies the colour theme ('auto', 'light' or 'dark'), and tells every open viewer. Returns it. */
+  async setTheme(value) {
+    if (!isTheme(value)) throw new ViewerError('invalid_input', 'input.themeInvalid', { themes: THEMES });
+    await this.ready();
+    this.preferences.theme = value;
+    const saved = this.settings.save({ theme: value }).catch((error) => this.log(this.i18n.t('log.settingsSaveFailed', { detail: error.message })));
+    for (const instance of this._instances.values()) instance.republish();
+    await saved;
     return value;
   }
 
@@ -120,6 +142,8 @@ export class ViewerRegistry {
       changeLanguage: (language) => this.setLanguage(language),
       getPreferences: () => this.preferences,
       changeCommentsWidth: (width) => this.setCommentsWidth(width),
+      changeRailHeight: (height) => this.setRailHeight(height),
+      changeTheme: (theme) => this.setTheme(theme),
       sendToAgent: this.sendToAgent,
       log: (message) => this.log(message),
       ...(this.watchIntervalMs === undefined ? {} : { watchIntervalMs: this.watchIntervalMs }),

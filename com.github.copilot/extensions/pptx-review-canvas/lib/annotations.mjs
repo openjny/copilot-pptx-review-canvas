@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { ViewerError } from './errors.mjs';
-import { MAX_COMMENTS_PER_PAGE, newComment, validateComment, validateCommentText } from './comments.mjs';
+import { MAX_COMMENTS_PER_PAGE, MAX_REPLIES_PER_COMMENT, newComment, newReply, validateComment, validateCommentText } from './comments.mjs';
 import { createI18n, msg } from './i18n.mjs';
 import { hashPath, normalizePathKey, quarantine, readRecord, writeRecord } from './store.mjs';
 
@@ -167,35 +167,88 @@ export class AnnotationBook {
     else this._comments.delete(target);
   }
 
-  /** How many comments each slide has (slides without any are left out). */
+  /** How many open (not resolved) comments each slide has; slides without any are left out. */
   commentCounts() {
     const counts = {};
-    for (const [slide, list] of [...this._comments].sort((a, b) => a[0] - b[0])) if (list.length) counts[slide] = list.length;
+    for (const [slide, list] of [...this._comments].sort((a, b) => a[0] - b[0])) {
+      const open = list.filter((comment) => !comment.resolved).length;
+      if (open) counts[slide] = open;
+    }
     return counts;
   }
 
-  /** Adds a comment (`{ text, anchor }`) to a slide or draft page and returns it. */
+  /**
+   * Adds a comment (`{ text, anchor, author }`) to a slide or draft page and returns it. What the agent writes is not "unread" for the
+   * agent: only the user's own comments make a page one the agent has not looked at.
+   */
   addComment(target, input) {
     if (typeof target === 'string') this._requireDraft(target);
     const list = this.comments(target);
     if (list.length >= MAX_COMMENTS_PER_PAGE) throw new ViewerError('annotation_limit', 'error.commentsLimit');
     const comment = newComment(input);
     this._setComments(target, [...list, comment]);
-    this._touch(target);
+    this._touch(target, { unread: comment.author === 'user' });
     return comment;
   }
 
-  /** Changes the text of a comment. Returns the comment, or null when there is no such comment (or the text is the same). */
-  updateComment(target, id, text) {
-    if (typeof target === 'string') this._requireDraft(target);
+  _requireComment(target, id) {
     const list = this.comments(target);
     const found = list.find((comment) => comment.id === id);
     if (!found) throw new ViewerError('comment_not_found', 'error.commentNotFound');
+    return { list, found };
+  }
+
+  _replace(target, list, found, next) {
+    this._setComments(target, list.map((comment) => (comment === found ? next : comment)));
+  }
+
+  /** Where a comment is, wherever it is: `{ target, comment }` (a slide number or a draft id), or null. */
+  findComment(id) {
+    for (const [slide, list] of this._comments) {
+      const comment = list.find((entry) => entry.id === id);
+      if (comment) return { target: slide, comment };
+    }
+    for (const draft of this._drafts) {
+      const comment = (draft.comments ?? []).find((entry) => entry.id === id);
+      if (comment) return { target: draft.id, comment };
+    }
+    return null;
+  }
+
+  /** Changes the text of the user's own comment. Returns the comment, or null when the text is the same. */
+  updateComment(target, id, text) {
+    if (typeof target === 'string') this._requireDraft(target);
+    const { list, found } = this._requireComment(target, id);
+    if (found.author !== 'user') throw new ViewerError('comment_not_editable', 'error.commentNotEditable');
     const next = validateCommentText(text);
     if (next === found.text) return null;
     const updated = { ...found, text: next, updatedAt: Date.now() };
-    this._setComments(target, list.map((comment) => (comment === found ? updated : comment)));
+    this._replace(target, list, found, updated);
     this._touch(target);
+    return updated;
+  }
+
+  /** Adds a reply (`{ text, author }`) to a comment. A reply from the user is something the agent has not read; one from the agent is not. */
+  replyComment(target, id, input) {
+    if (typeof target === 'string') this._requireDraft(target);
+    const { list, found } = this._requireComment(target, id);
+    if (found.replies.length >= MAX_REPLIES_PER_COMMENT) throw new ViewerError('annotation_limit', 'error.repliesLimit');
+    const reply = newReply(input);
+    const updated = { ...found, replies: [...found.replies, reply], updatedAt: reply.createdAt };
+    this._replace(target, list, found, updated);
+    this._touch(target, { unread: reply.author === 'user' });
+    return { comment: updated, reply };
+  }
+
+  /** Resolves a thread, or opens it again. Returns the comment, or null when it already was in that state. Nothing is unread by it. */
+  setResolved(target, id, resolved) {
+    if (typeof target === 'string') this._requireDraft(target);
+    const { list, found } = this._requireComment(target, id);
+    if (found.resolved === resolved) return null;
+    const { resolvedAt, ...rest } = found;
+    const updated = { ...rest, resolved, ...(resolved ? { resolvedAt: Date.now() } : {}) };
+    this._replace(target, list, found, updated);
+    this._touch(target, { unread: false });
     return updated;
   }
 
@@ -237,7 +290,7 @@ export class AnnotationBook {
   drafts() {
     return [...this._drafts]
       .sort((a, b) => a.after - b.after)
-      .map((draft) => ({ id: draft.id, title: draft.title, after: draft.after, count: draft.strokes.length, comments: (draft.comments ?? []).length, unread: this._unread.has(draft.id) }));
+      .map((draft) => ({ id: draft.id, title: draft.title, after: draft.after, count: draft.strokes.length, comments: (draft.comments ?? []).filter((comment) => !comment.resolved).length, unread: this._unread.has(draft.id) }));
   }
 
   unreadDrafts() {
@@ -247,19 +300,19 @@ export class AnnotationBook {
   /** Puts strokes and comments in place without marking them changed (used when a record is loaded). */
   restore(slide, strokes, unread, comments = []) {
     if (strokes.length) this._slides.set(slide, strokes);
-    if (comments.length) this._comments.set(slide, comments);
+    if (comments.length) this._comments.set(slide, comments.map(validateComment));
     if (unread) this._unread.add(slide);
   }
 
   restoreDraft(draft, unread) {
     const title = String(draft.title).replace(LEGACY_DRAFT_TITLE, DRAFT_TITLE);
-    this._drafts.push({ id: draft.id, title, after: draft.after, afterHash: draft.afterHash, createdAt: draft.createdAt ?? Date.now(), strokes: draft.strokes, comments: draft.comments ?? [] });
+    this._drafts.push({ id: draft.id, title, after: draft.after, afterHash: draft.afterHash, createdAt: draft.createdAt ?? Date.now(), strokes: draft.strokes, comments: (draft.comments ?? []).map(validateComment) });
     if (unread) this._unread.add(draft.id);
   }
 
-  _touch(target) {
+  _touch(target, { unread = true } = {}) {
     this.rev += 1;
-    this._unread.add(target);
+    if (unread) this._unread.add(target);
     this._emit();
   }
 

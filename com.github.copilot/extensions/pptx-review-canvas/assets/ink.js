@@ -2,6 +2,7 @@
 // and the server holds the authoritative copy: every change is sent in order, and the page reloads when someone else changed it.
 
 import { t } from './i18n.js';
+import { shapeKey, shapePoints } from './shape.js';
 
 const COLORS = { pen: '#e5231b', highlighter: '#ffd400' };
 const WIDTHS = {
@@ -97,7 +98,6 @@ export function createInk({ box, canvas, getState, getJson, post, onError, annou
     clear: byId('ink-clear'),
     toggle: byId('ink-toggle'),
     count: byId('ink-count'),
-    bar: byId('ink'),
   };
   const context = canvas.getContext('2d');
   const model = {
@@ -307,11 +307,17 @@ export function createInk({ box, canvas, getState, getJson, post, onError, annou
       if (keep.length !== model.strokes.length) model.strokes = keep;
       return;
     }
-    const { points } = gesture.stroke;
-    const last = points[points.length - 1];
-    if (points.length >= MAX_POINTS) return;
-    if (Math.hypot(point[0] - last[0], (point[1] - last[1]) / aspect()) < MIN_STEP) return;
-    points.push([round(point[0]), round(point[1])]);
+    const { free } = gesture;
+    const last = free[free.length - 1];
+    gesture.end = [round(point[0]), round(point[1])];
+    gesture.kind = shapeKey(event);
+    if (free.length < MAX_POINTS && Math.hypot(point[0] - last[0], (point[1] - last[1]) / aspect()) >= MIN_STEP) free.push(gesture.end);
+    reshape(gesture);
+  }
+
+  /** Sets the points of a stroke being drawn: as drawn, or a line or a rectangle from where it began to where the pointer is. */
+  function reshape(gesture) {
+    gesture.stroke.points = shapePoints(gesture.kind, gesture.free, gesture.free[0], gesture.end, { minStep: MIN_STEP, aspect: aspect() });
   }
 
   function begin(event) {
@@ -329,11 +335,17 @@ export function createInk({ box, canvas, getState, getJson, post, onError, annou
       model.gesture = { type: 'erase', pointerId: event.pointerId, erased: [] };
       extend(event);
     } else {
+      const start = [round(point[0]), round(point[1])];
       model.gesture = {
         type: 'draw',
         pointerId: event.pointerId,
-        stroke: { id: newId(), tool: model.tool, color: model.colors[model.tool], width: WIDTHS[model.size][model.tool], points: [[round(point[0]), round(point[1])]] },
+        // `free` is the stroke as the pointer drew it; the stroke itself becomes a line or a rectangle while Shift or Ctrl is held.
+        free: [start],
+        end: start,
+        kind: shapeKey(event),
+        stroke: { id: newId(), tool: model.tool, color: model.colors[model.tool], width: WIDTHS[model.size][model.tool], points: [start] },
       };
+      reshape(model.gesture);
     }
     schedule();
   }
@@ -361,11 +373,17 @@ export function createInk({ box, canvas, getState, getJson, post, onError, annou
     model.gesture = null;
     if (gesture.type === 'select') {
       if (keep) onSelect(selectionAnchor(gesture));
+      if (gesture.via === 'context') rightHandled();
       schedule();
       renderUi();
       return;
     }
     if (gesture.type === 'draw' && keep) {
+      // What is on screen when the button goes up is what is kept.
+      const end = pointOf(event);
+      gesture.end = [round(end[0]), round(end[1])];
+      gesture.kind = shapeKey(event);
+      reshape(gesture);
       model.epoch += 1;
       model.strokes = [...model.strokes, gesture.stroke];
       record({ type: 'add', strokes: [gesture.stroke] });
@@ -383,11 +401,63 @@ export function createInk({ box, canvas, getState, getJson, post, onError, annou
     renderUi();
   }
 
+  // The events of a gesture come to the slide box: the drawing ones are captured by the canvas and bubble up, the right button's by the box.
   canvas.addEventListener('pointerdown', begin);
-  canvas.addEventListener('pointermove', move);
-  canvas.addEventListener('pointerup', (event) => finish(event, { keep: true }));
-  canvas.addEventListener('pointercancel', (event) => finish(event, { keep: false }));
-  canvas.addEventListener('contextmenu', (event) => event.preventDefault());
+  box.addEventListener('pointermove', move);
+  box.addEventListener('pointerup', (event) => finish(event, { keep: true }));
+  box.addEventListener('pointercancel', (event) => finish(event, { keep: false }));
+
+  // Shift and Ctrl can be pressed or let go while a stroke is being drawn.
+  function reshapeOnKey(event) {
+    const { gesture } = model;
+    if (gesture?.type !== 'draw' || shapeKey(event) === gesture.kind) return;
+    gesture.kind = shapeKey(event);
+    reshape(gesture);
+    schedule();
+  }
+  window.addEventListener('keydown', reshapeOnKey);
+  window.addEventListener('keyup', reshapeOnKey);
+
+  /**
+   * The right button, whichever tool is picked: a click comments on that spot, a drag on the area it spans. A browser sends "contextmenu"
+   * too, once the button goes up (or at once, on some systems); `contextDone` tells that one from a long press or the menu key, which
+   * come alone and still start a comment on the spot.
+   */
+  let contextDone = false;
+  const rightHandled = () => {
+    contextDone = true;
+    setTimeout(() => {
+      contextDone = false;
+    }, 500);
+  };
+
+  box.addEventListener('pointerdown', (event) => {
+    if (event.pointerType !== 'mouse' || event.button !== 2) return;
+    contextDone = false;
+    if (!enabled() || model.gesture || (event.target instanceof Element && event.target.closest('.cmark__badge'))) return;
+    event.preventDefault();
+    try {
+      box.setPointerCapture(event.pointerId);
+    } catch {
+      // The pointer may already be gone.
+    }
+    const point = pointOf(event);
+    model.gesture = { type: 'select', via: 'context', pointerId: event.pointerId, start: point, end: point };
+    schedule();
+  });
+
+  box.addEventListener('contextmenu', (event) => {
+    if (!enabled()) return;
+    event.preventDefault();
+    // On a marker nothing starts (it is not a new spot), but the browser's own menu would only get in the way, so it is kept away too.
+    if (event.target instanceof Element && event.target.closest('.cmark__badge')) return;
+    if (model.gesture || contextDone) {
+      contextDone = false;
+      return;
+    }
+    const [x, y] = pointOf(event);
+    onSelect({ x: round(x), y: round(y), w: 0, h: 0 });
+  });
 
   function cancelGesture() {
     if (!model.gesture) return;
@@ -449,7 +519,6 @@ export function createInk({ box, canvas, getState, getJson, post, onError, annou
     ui.toggle.disabled = !current?.deck;
     ui.toggle.setAttribute('aria-pressed', String(model.visible));
     for (const control of [...ui.tools, ...ui.swatches, ...ui.sizes]) control.disabled = !current?.deck;
-    ui.bar.hidden = !current?.deck;
     canvas.hidden = !current?.deck || !model.visible;
     if (on && model.tool) canvas.dataset.mode = model.tool;
     else delete canvas.dataset.mode;

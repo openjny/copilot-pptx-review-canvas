@@ -193,6 +193,16 @@ export const COMMENTS_WIDTH_LIMITS = { min: 200, max: 1200 };
 
 export const isCommentsWidth = (value) => Number.isInteger(value) && value >= COMMENTS_WIDTH_LIMITS.min && value <= COMMENTS_WIDTH_LIMITS.max;
 
+/** The same for the height of the strip of thumbnails (the row of thumbnails, without the scroll bar), in pixels. */
+export const RAIL_HEIGHT_LIMITS = { min: 40, max: 600 };
+
+export const isRailHeight = (value) => Number.isInteger(value) && value >= RAIL_HEIGHT_LIMITS.min && value <= RAIL_HEIGHT_LIMITS.max;
+
+/** The colour themes of the page: follow the system ('auto'), or always light or dark. */
+export const THEMES = ['auto', 'light', 'dark'];
+
+export const isTheme = (value) => THEMES.includes(value);
+
 function validateSettings(data) {
   if (!data || typeof data !== 'object' || Array.isArray(data)) return msg('record.notObject');
   if (data.language !== undefined && normalizeLanguage(data.language) === null) return msg('settings.languageInvalid');
@@ -210,8 +220,9 @@ export class SettingsStore {
   }
 
   /**
-   * `{ language, commentsWidth }`: the saved language ('en' or 'ja') and width of the comments pane, each null when nothing usable is saved.
-   * A file that cannot be used is kept aside, not overwritten; a width that is out of range is ignored and the rest is kept.
+   * `{ language, commentsWidth, railHeight, theme }`: the saved language ('en' or 'ja'), width of the comments pane, height of the strip of
+   * thumbnails and colour theme, each null when nothing usable is saved. A file that cannot be used is kept aside, not overwritten; a size
+   * or theme that is not valid is ignored and the rest is kept.
    */
   async load() {
     try {
@@ -219,8 +230,15 @@ export class SettingsStore {
       if (record.status === 'ok') {
         const language = normalizeLanguage(record.data.language);
         const commentsWidth = isCommentsWidth(record.data.commentsWidth) ? record.data.commentsWidth : null;
-        this._data = { ...(language ? { language } : {}), ...(commentsWidth === null ? {} : { commentsWidth }) };
-        return { language, commentsWidth };
+        const railHeight = isRailHeight(record.data.railHeight) ? record.data.railHeight : null;
+        const theme = isTheme(record.data.theme) ? record.data.theme : null;
+        this._data = {
+          ...(language ? { language } : {}),
+          ...(commentsWidth === null ? {} : { commentsWidth }),
+          ...(railHeight === null ? {} : { railHeight }),
+          ...(theme ? { theme } : {}),
+        };
+        return { language, commentsWidth, railHeight, theme };
       }
       if (record.status === 'invalid') {
         const kept = await quarantine(this.file).catch(() => null);
@@ -229,12 +247,12 @@ export class SettingsStore {
     } catch (error) {
       this.log(this.i18n.t('log.settingsUnreadable', { detail: error.message }));
     }
-    return { language: null, commentsWidth: null };
+    return { language: null, commentsWidth: null, railHeight: null, theme: null };
   }
 
   /**
-   * Saves what is in `patch` (`language`, `commentsWidth`; null clears the width) and keeps the rest of the file. Saves run in the
-   * order they were asked for, so the last choice is the one on disk.
+   * Saves what is in `patch` (`language`, `commentsWidth`, `railHeight`, `theme`; null clears a size) and keeps the rest of the file. Saves
+   * run in the order they were asked for, so the last choice is the one on disk.
    */
   save(patch) {
     const next = { ...this._data };
@@ -246,6 +264,11 @@ export class SettingsStore {
       if (patch.commentsWidth === null) delete next.commentsWidth;
       else if (isCommentsWidth(patch.commentsWidth)) next.commentsWidth = patch.commentsWidth;
     }
+    if ('railHeight' in patch) {
+      if (patch.railHeight === null) delete next.railHeight;
+      else if (isRailHeight(patch.railHeight)) next.railHeight = patch.railHeight;
+    }
+    if ('theme' in patch && isTheme(patch.theme)) next.theme = patch.theme;
     this._data = next;
     const data = { ...next };
     const write = this._write.catch(() => {}).then(() => writeRecord(this.file, SETTINGS_FORMAT, SETTINGS_VERSION, data));

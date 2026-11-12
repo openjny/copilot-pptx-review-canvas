@@ -13,7 +13,7 @@ A [GitHub Copilot canvas](https://code.visualstudio.com/docs/agents/run/canvases
 
 English | [日本語](./README.ja.md)
 
-![A slide with pen marks, a highlighter stroke and numbered comment pins, next to the comment list and the slide strip](./docs/images/hero.png)
+![A slide with a pen mark, a highlighter stroke and numbered comment pins, next to the comment threads of the user and the agent and the slide strip](./docs/images/hero.png)
 
 </div>
 
@@ -31,12 +31,13 @@ With this canvas you point instead. It sits between you and your agent, and the 
 
 ## Features
 
-- **Draw and comment**: pen, highlighter and eraser, and comments on a point, an area or the whole slide.
+- **Draw and comment**: pen, highlighter and eraser (hold `Shift` for a straight line, `Ctrl` for a rectangle). Comment on a point, an area or the whole slide: click, drag or right-click the slide and write in a bubble beside the spot.
+- **Talk with the agent in threads**: the agent can leave comments of its own ("I changed this, does it match?") and reply to yours. You reply in the same thread and resolve it when it is settled, like a code review.
 - **Sketch new slides**: add a blank slide anywhere, or start a sketchbook, and draw the layout for the agent to build.
-- **Reorder and delete** slides, with a backup and undo.
+- **Reorder and delete** slides by dragging them, or from the right-click menu of a slide, with a backup and undo.
 - **Submit review**: one button asks the agent to read your marks, comments and new slides, and to make the changes.
 - **Local and private**: slides are rendered by your own PowerPoint, and nothing leaves your PC.
-- **English and Japanese** interface.
+- **English and Japanese** interface, in a light or dark theme.
 
 <details>
 <summary>📸 <b>Screenshots</b></summary>
@@ -45,12 +46,16 @@ With this canvas you point instead. It sits between you and your agent, and the 
 
 <table>
   <tr>
-    <td width="50%"><img src="./docs/images/submit.png" alt="The Submit review panel with a note for the agent"><br><sub><b>Submit review</b>: one button sends everything to the agent.</sub></td>
-    <td width="50%"><img src="./docs/images/comments.png" alt="Writing a comment on a dragged area"><br><sub><b>Comments</b>: a point, an area or the whole slide.</sub></td>
+    <td width="50%"><img src="./docs/images/comments.png" alt="Writing a comment in a bubble beside a dragged area"><br><sub><b>Comments</b>: click, drag or right-click a spot and write in the bubble.</sub></td>
+    <td width="50%"><img src="./docs/images/threads.png" alt="A thread where the agent asked a question, you answered, and the agent replied, with a box to reply again"><br><sub><b>Threads</b>: the agent comments and replies, you reply and resolve.</sub></td>
   </tr>
   <tr>
     <td width="50%"><img src="./docs/images/new-slide.png" alt="A sketch on a new slide between two slides"><br><sub><b>New slide</b>: sketch an idea, the agent builds it.</sub></td>
     <td width="50%"><img src="./docs/images/reorder.png" alt="Dragging a slide in the strip with an insertion line"><br><sub><b>Reorder</b>: drag in the strip and drop at the line.</sub></td>
+  </tr>
+  <tr>
+    <td width="50%"><img src="./docs/images/menu.png" alt="The right-click menu of a slide in the strip, with Delete in red"><br><sub><b>Slide menu</b>: right-click a slide to add, move or delete it.</sub></td>
+    <td width="50%"><img src="./docs/images/dark.png" alt="The settings menu with the theme and the language, over the dark theme"><br><sub><b>Settings</b>: theme (auto, light, dark) and language.</sub></td>
   </tr>
 </table>
 
@@ -75,7 +80,7 @@ For VS Code, see [Install and update](./docs/install.md#vs-code). Start a new se
 ## Quick start
 
 1. Ask your agent: *"Open `samples/q3-review.pptx` in PowerPoint Review."* The first render takes a few seconds while PowerPoint starts.
-2. Pick the comment tool (`C`) and click a spot on a slide, or circle something with the pen (`P`).
+2. Pick the comment tool (`C`) and click a spot on a slide, or right-click a spot with any tool, or circle something with the pen (`P`).
 3. Press **Submit review** at the top right. The agent reads your marks and comments, edits the deck and saves it, and the canvas refreshes by itself.
 
 ## Documentation

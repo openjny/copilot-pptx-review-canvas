@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { test } from 'node:test';
 import { AnnotationBook, AnnotationStore } from '../lib/annotations.mjs';
-import { MAX_COMMENTS_PER_PAGE, commentKind, newComment, validateAnchor, validateComment, validateCommentText } from '../lib/comments.mjs';
+import { MAX_COMMENTS_PER_PAGE, MAX_REPLIES_PER_COMMENT, commentKind, newComment, newReply, validateAnchor, validateAuthor, validateComment, validateCommentText } from '../lib/comments.mjs';
 import { analyzeComments } from '../lib/marks.mjs';
 import { decodePng } from '../lib/png.mjs';
 import { ViewerRegistry } from '../lib/registry.mjs';
@@ -287,4 +287,184 @@ test('deleting a comment can be undone and redone, and a deleted slide brings it
   } finally {
     await registry.closeAll();
   }
+});
+
+test('a comment from an older record reads as the user\'s, with no replies and not resolved; bad authors and replies are refused', () => {
+  const old = { id: 'c000000000001', text: 'old', anchor: null, createdAt: 1, updatedAt: 1 };
+  assert.deepEqual(validateComment(old), { ...old, author: 'user', resolved: false, replies: [] });
+  assert.equal(validateComment({ ...old, author: 'agent', resolved: true, resolvedAt: 5 }).resolvedAt, 5);
+  assert.equal(validateAuthor(undefined), 'user');
+  rejects(() => validateAuthor('robot'), 'invalid_input');
+  rejects(() => validateComment({ ...old, author: 'robot' }), 'invalid_input');
+  rejects(() => validateComment({ ...old, resolved: 'yes' }), 'invalid_input');
+  rejects(() => validateComment({ ...old, replies: 'none' }), 'invalid_input');
+  rejects(() => validateComment({ ...old, replies: [{ id: 'x', text: 'a', createdAt: 1 }] }), 'invalid_input');
+  rejects(() => validateComment({ ...old, replies: Array.from({ length: MAX_REPLIES_PER_COMMENT + 1 }, () => ({})) }), 'invalid_input');
+  const reply = newReply({ text: ' yes ', author: 'agent' });
+  assert.match(reply.id, /^r[0-9a-f]{12}$/);
+  assert.deepEqual(validateComment({ ...old, replies: [reply] }).replies, [reply]);
+});
+
+test('threads: who wrote what decides what the agent has not read, and a resolved thread no longer counts', () => {
+  const book = new AnnotationBook({ path: 'C:\\x\\deck.pptx', deckKey: 'k'.repeat(24), slideCount: 4, hashes: ['h1', 'h2', 'h3', 'h4'] });
+  const fromAgent = book.addComment(2, { text: 'I changed the title. Does it match?', anchor: { x: 0.1, y: 0.1 }, author: 'agent' });
+  assert.equal(fromAgent.author, 'agent');
+  assert.deepEqual(book.unreadSlides(), [], 'what the agent writes is not unread for the agent');
+  assert.deepEqual(book.commentCounts(), { 2: 1 });
+  rejects(() => book.updateComment(2, fromAgent.id, 'edited by the user'), 'comment_not_editable');
+
+  const rev = book.rev;
+  const { comment, reply } = book.replyComment(2, fromAgent.id, { text: 'Yes, but shorten it.', author: 'user' });
+  assert.ok(book.rev > rev);
+  assert.equal(reply.author, 'user');
+  assert.deepEqual(comment.replies.map((entry) => entry.text), ['Yes, but shorten it.']);
+  assert.deepEqual(book.unreadSlides(), [2], 'a reply from the user is something to read');
+
+  book.markRead([2]);
+  book.replyComment(2, fromAgent.id, { text: 'Shortened.', author: 'agent' });
+  assert.deepEqual(book.unreadSlides(), [], 'a reply from the agent is not');
+  assert.deepEqual(book.comments(2)[0].replies.map((entry) => entry.author), ['user', 'agent']);
+
+  const resolved = book.setResolved(2, fromAgent.id, true);
+  assert.equal(resolved.resolved, true);
+  assert.ok(resolved.resolvedAt > 0);
+  assert.deepEqual(book.unreadSlides(), [], 'resolving is not feedback to read');
+  assert.deepEqual(book.commentCounts(), {}, 'a resolved thread is not counted');
+  assert.deepEqual(book.annotatedSlides(), [], 'and a slide with only resolved threads has nothing to say');
+  assert.equal(book.setResolved(2, fromAgent.id, true), null, 'resolving twice changes nothing');
+  assert.equal(book.setResolved(2, fromAgent.id, false).resolvedAt, undefined);
+  assert.deepEqual(book.commentCounts(), { 2: 1 }, 'and it can be opened again');
+
+  assert.equal(book.findComment(fromAgent.id).target, 2);
+  const draft = book.addDraft({ after: 1 });
+  const onDraft = book.addComment(draft.id, { text: 'on the draft', author: 'agent' });
+  assert.equal(book.findComment(onDraft.id).target, draft.id);
+  assert.equal(book.findComment('c999999999999'), null);
+  rejects(() => book.replyComment(2, 'cnone', { text: 'x' }), 'comment_not_found');
+  rejects(() => book.setResolved(2, 'cnone', true), 'comment_not_found');
+
+  const busy = book.addComment(3, { text: 'busy' });
+  for (let i = 0; i < MAX_REPLIES_PER_COMMENT; i++) book.replyComment(3, busy.id, { text: `r${i}` });
+  rejects(() => book.replyComment(3, busy.id, { text: 'one too many' }), 'annotation_limit');
+});
+
+test('replies and resolved threads are saved and come back', async () => {
+  const root = await makeTempDir();
+  const store = new AnnotationStore(root);
+  const { book } = await store.attach(deck('a'.repeat(24), ['h1', 'h2']));
+  const thread = book.addComment(1, { text: 'from the agent', author: 'agent' });
+  book.replyComment(1, thread.id, { text: 'from the user', author: 'user' });
+  book.setResolved(1, thread.id, true);
+  await store.save(book);
+  const [back] = (await new AnnotationStore(root).attach(deck('a'.repeat(24), ['h1', 'h2']))).book.comments(1);
+  assert.equal(back.author, 'agent');
+  assert.equal(back.resolved, true);
+  assert.deepEqual(back.replies.map((entry) => [entry.author, entry.text]), [['user', 'from the user']]);
+
+  const file = store.fileFor('C:\\x\\deck.pptx');
+  const record = JSON.parse(await fs.readFile(file, 'utf8'));
+  delete record.data.slides['1'].comments[0].author;
+  delete record.data.slides['1'].comments[0].replies;
+  delete record.data.slides['1'].comments[0].resolved;
+  await fs.writeFile(file, JSON.stringify(record));
+  const [legacy] = (await new AnnotationStore(root).attach(deck('a'.repeat(24), ['h1', 'h2']))).book.comments(1);
+  assert.deepEqual([legacy.author, legacy.resolved, legacy.replies], ['user', false, []], 'a comment saved before threads existed is still the user\'s');
+});
+
+test('the page cannot write as the agent, and it replies and resolves through the API', async () => {
+  const { registry, instance } = await setup();
+  try {
+    const spoof = json(await post(instance, 'comments/add', { slide: 2, text: 'I claim to be the agent', author: 'agent' })).comment;
+    assert.equal(spoof.author, 'user');
+    const root = (await instance.addAgentComment({ slide: 2, text: 'Check this number', anchor: { x: 50, y: 50 } }));
+    const replied = await post(instance, 'comments/reply', { slide: 2, id: root.id, text: '  it is right  ' });
+    assert.equal(replied.status, 200);
+    assert.equal(json(replied).reply.text, 'it is right');
+    assert.equal(json(replied).reply.author, 'user');
+    assert.equal(json(replied).comment.replies.length, 1);
+    assert.equal((await post(instance, 'comments/reply', { slide: 2, id: root.id, text: ' ' })).status, 400);
+    assert.equal((await post(instance, 'comments/reply', { slide: 2, id: 'cnone', text: 'x' })).status, 404);
+
+    assert.equal((await post(instance, 'comments/update', { slide: 2, id: root.id, text: 'rewrite the agent' })).status, 409, 'the agent\'s words cannot be edited');
+    const resolved = await post(instance, 'comments/resolve', { slide: 2, id: root.id, resolved: true });
+    assert.equal(json(resolved).comment.resolved, true);
+    assert.equal((await post(instance, 'comments/resolve', { slide: 2, id: root.id, resolved: 'yes' })).status, 400);
+    assert.deepEqual(instance.snapshot().annotations.commentCounts, { 2: 1 }, 'only the user\'s own comment is still open');
+    assert.deepEqual(json(await request(`${instance.url}api/comments?slide=2`)).comments.map((entry) => [entry.author, entry.resolved, entry.replies.length]), [['user', false, 0], ['agent', true, 1]]);
+    assert.equal(json(await post(instance, 'comments/resolve', { slide: 2, id: root.id, resolved: false })).comment.resolved, false);
+  } finally {
+    await registry.closeAll();
+  }
+});
+
+test('the agent starts threads and replies; they come back marked as the agent\'s and are not unread', async () => {
+  const { registry, instance } = await setup();
+  try {
+    const slideBox = instance.snapshot().deck;
+    const area = await instance.addAgentComment({ slide: 2, text: 'I rewrote the title here.', shape: 'slide/2/title' });
+    assert.equal(area.kind, 'area');
+    const [stored] = instance.commentsFor(2).comments;
+    assert.equal(stored.author, 'agent');
+    assert.ok(Math.abs(stored.anchor.x - 10 / slideBox.slideWidth) < 0.001 && Math.abs(stored.anchor.w - 200 / slideBox.slideWidth) < 0.001, 'the shape\'s box, as fractions of the slide');
+    const point = await instance.addAgentComment({ slide: 2, text: 'Weak evidence for this claim. Please review closely.', anchor: { x: 25, y: 75 } });
+    assert.equal(point.kind, 'point');
+    assert.deepEqual(instance.commentsFor(2).comments[1].anchor, { x: 0.25, y: 0.75, w: 0, h: 0 });
+    const whole = await instance.addAgentComment({ slide: 3, text: 'Overall, this slide is dense.' });
+    assert.equal(whole.kind, 'page');
+    const draft = instance.addDraft({ after: 2 }).draft.id;
+    await instance.annotationReport({ includeImages: false });
+    assert.equal((await instance.addAgentComment({ draft, text: 'Is this the layout you meant?', anchor: { x: 10, y: 10, w: 30, h: 20 } })).draft, draft);
+    assert.equal(instance.unreadAnnotations(), null, 'the agent\'s own comments are not unread');
+    assert.deepEqual(instance.snapshot().annotations.commentCounts, { 2: 2, 3: 1 });
+
+    for (const bad of [{ text: 'x' }, { slide: 2, draft, text: 'x' }, { slide: 2, text: 'x', anchor: { x: 1, y: 1 }, shape: 'slide/2/body' }, { slide: 2, text: 'x', shape: 'nope' }, { draft, text: 'x', shape: 'slide/2/body' }, { slide: 2, text: 'x', anchor: { x: 'a', y: 1 } }, { slide: 2, text: ' ' }, { slide: 9, text: 'x' }]) {
+      await assert.rejects(() => instance.addAgentComment(bad), (error) => error.code === 'invalid_input' || error.code === 'slide_out_of_range', JSON.stringify(bad));
+    }
+
+    const answer = instance.replyAsAgent({ id: stored.id, text: 'Done.' });
+    assert.equal(answer.slide, 2);
+    assert.equal(answer.replies, 1);
+    assert.throws(() => instance.replyAsAgent({ id: 'c999999999999', text: 'x' }), (error) => error.code === 'comment_not_found');
+    assert.throws(() => instance.replyAsAgent({ id: 5, text: 'x' }), (error) => error.code === 'invalid_input');
+    assert.equal(instance.unreadAnnotations(), null);
+
+    // A reply from the user is read by the agent: it shows in the report with its author, and reading clears the unread state.
+    instance.replyComment(2, stored.id, 'Looks good.');
+    assert.deepEqual(instance.unreadAnnotations().slides, [2]);
+    const { info } = await instance.annotationReport({ slide: 2, includeImages: false });
+    const thread = info.slides[0].comments.find((entry) => entry.id === stored.id);
+    assert.equal(thread.author, 'agent');
+    assert.deepEqual(thread.replies, [{ author: 'agent', text: 'Done.' }, { author: 'user', text: 'Looks good.' }]);
+    assert.equal(instance.unreadAnnotations(), null);
+
+    instance.resolveComment(2, stored.id, true);
+    const after = (await instance.annotationReport({ slide: 2, includeImages: false })).info.slides[0];
+    assert.deepEqual(after.comments.map((entry) => entry.id), [instance.commentsFor(2).comments[1].id], 'a resolved thread is left out of the report');
+    assert.equal(after.resolvedCommentCount, 1);
+    assert.equal(after.comments[0].number, 1, 'and the numbers count only the open threads');
+  } finally {
+    await registry.closeAll();
+  }
+});
+
+test('the theme is chosen on the page, kept for every viewer, and survives a restart', async () => {
+  const { registry, instance, dataRoot } = await setup();
+  try {
+    assert.equal(instance.snapshot().theme, 'auto');
+    assert.equal((await post(instance, 'theme', { theme: 'neon' })).status, 400);
+    assert.equal((await post(instance, 'theme', {})).status, 400);
+    const other = await registry.ensure('panel-2', { baseDir: dataRoot });
+    const rev = other.snapshot().rev;
+    const chosen = await post(instance, 'theme', { theme: 'dark' });
+    assert.equal(json(chosen).theme, 'dark');
+    assert.equal(instance.snapshot().theme, 'dark');
+    assert.equal(other.snapshot().theme, 'dark', 'another viewer follows');
+    assert.ok(other.snapshot().rev > rev, 'and is told');
+  } finally {
+    await registry.closeAll();
+  }
+  const again = new ViewerRegistry({ root: dataRoot, watchIntervalMs: 0, renderer: fakeRenderer({ slides: 4, calls: [], shapes: SHAPES }) });
+  await again.ready();
+  assert.equal(again.preferences.theme, 'dark');
+  await again.closeAll();
 });
