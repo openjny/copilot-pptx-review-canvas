@@ -1,0 +1,26 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "copilot-pptx-canvas",
+  "description": "A Copilot canvas that shows a PowerPoint deck as slide images where you draw, comment, add new slides and reorder or delete slides, so the agent can read your feedback and edit the deck.",
+  "version": "1.0.0",
+  "author": {
+    "name": "openjny",
+    "url": "https://github.com/openjny"
+  },
+  "homepage": "https://github.com/openjny/copilot-pptx-canvas#readme",
+  "repository": "https://github.com/openjny/copilot-pptx-canvas",
+  "license": "MIT",
+  "keywords": [
+    "canvas",
+    "powerpoint",
+    "pptx",
+    "review",
+    "slides",
+    "annotation"
+  ],
+  "extensions": {
+    "com.github.copilot": {
+      "logo": "assets/preview.png"
+    }
+  }
+}

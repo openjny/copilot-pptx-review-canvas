@@ -1,0 +1,19 @@
+{
+  "name": "copilot-pptx-canvas",
+  "owner": {
+    "name": "openjny",
+    "url": "https://github.com/openjny"
+  },
+  "metadata": {
+    "description": "A Copilot canvas for reviewing PowerPoint decks with your agent.",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "copilot-pptx-canvas",
+      "description": "A Copilot canvas that shows a PowerPoint deck as slide images where you draw, comment, add new slides and reorder or delete slides, so the agent can read your feedback and edit the deck.",
+      "version": "1.0.0",
+      "source": "."
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "name": "copilot-pptx-canvas",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A Copilot canvas for reviewing PowerPoint decks with the agent.",
+  "type": "module",
+  "license": "MIT",
+  "repository": "https://github.com/openjny/copilot-pptx-canvas",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test \"test/*.test.mjs\" \"com.github.copilot/extensions/pptx-slide-viewer/test/*.test.mjs\"",
+    "smoke": "node com.github.copilot/extensions/pptx-slide-viewer/test/smoke-powerpoint.mjs"
+  }
+}
